@@ -1,0 +1,28 @@
+# Secrets
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Corpus data — downloaded by script, never committed
+data/raw/
+data/cache/
+*.pdf
+!docs/**/*.pdf
+
+# Derived artifacts too large to commit (indexes, embeddings)
+data/processed/
+data/index/
+*.faiss
+*.npy
+*.npz
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

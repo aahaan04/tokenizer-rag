@@ -1,0 +1,19 @@
+# Corpus collection
+requests>=2.31
+python-dotenv>=1.0
+
+# Parsing
+pymupdf>=1.24
+beautifulsoup4>=4.12
+lxml>=5.2
+
+# Retrieval
+sentence-transformers>=3.0
+rank-bm25>=0.2.2
+numpy>=1.26
+
+# LLM provider clients (OpenAI-compatible HTTP API covers Groq; requests is enough,
+# no SDK pinned so Gemini can be swapped via the provider interface)
+
+# Dev/test
+pytest>=8.0
