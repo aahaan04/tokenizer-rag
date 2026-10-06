@@ -42,7 +42,7 @@ def load_config() -> AppConfig:
             gemini_api_key=os.environ.get("GEMINI_API_KEY", ""),
             gemini_model=os.environ.get("GEMINI_MODEL", "gemini-2.0-flash"),
         ),
-        semantic_scholar_api_key=os.environ.get("SEMANTIC_SCHOLAR_API_KEY", ""),
+        semantic_scholar_api_key=os.environ.get("SEMANTIC_SCHOLAR_API_KEY") or os.environ.get("S2_API_KEY", ""),
     )
 
 

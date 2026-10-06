@@ -26,3 +26,6 @@ data/index/
 Thumbs.db
 .vscode/
 .idea/
+
+# Claude Code session-local state (not project config)
+.claude/
