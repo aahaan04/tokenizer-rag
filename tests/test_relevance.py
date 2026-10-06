@@ -58,12 +58,57 @@ def test_visual_tokenizer_for_multimodal_llm_is_kept():
     assert included
 
 
-def test_off_topic_domain_with_llm_context_is_kept():
-    # Same off-topic-ish domain term, but explicit LLM framing should save it.
+def test_soft_domain_veto_is_rescued_by_llm_context():
+    # Speech/music are "soft" veto terms — an explicit LLM mention still rescues them.
     included, _ = decide(
+        "A Shared Tokenizer for Speech and Text in a Unified Language Model",
+        "We study how a single large language model tokenizer trained with "
+        "byte-pair encoding handles both speech recognition and text generation.",
+    )
+    assert included
+
+
+def test_molecular_domain_never_rescued_by_llm_context():
+    # Molecular/protein/genomic domains are a "hard" veto (2026-10-06, Checkpoint
+    # 1b): unlike speech/music, an LLM mention doesn't rescue them — this is the
+    # "Training Text-to-Molecule Models with Context-Aware Tokenization" case the
+    # user flagged, which the old single-tier veto let through.
+    included, reason = decide(
         "Byte-Pair Encoding for Multimodal Large Language Models on Molecular Data",
         "We study how a large language model tokenizer trained with byte-pair "
         "encoding represents molecular SMILES strings for downstream reasoning.",
+    )
+    assert not included
+    assert reason.startswith("veto:domain-hard:")
+
+
+def test_classic_word_segmentation_is_excluded():
+    included, reason = decide(
+        "Joint Dependency Parsing and Multiword Expression Tokenization",
+        "We present a joint model for dependency parsing and word segmentation "
+        "that identifies multiword expressions during tokenization for downstream "
+        "part-of-speech tagging.",
+    )
+    assert not included
+    assert reason.startswith("veto:classic-pipeline:")
+
+
+def test_subword_segmentation_is_not_caught_by_classic_pipeline_veto():
+    # "subword segmentation" contains "word segmentation" as a literal substring —
+    # must not trip the classic-pipeline veto meant for the pre-neural sense.
+    included, _ = decide(
+        "Subword Segmentation Strategies for Multilingual Language Models",
+        "We compare subword segmentation strategies for training a multilingual "
+        "language model tokenizer.",
+    )
+    assert included
+
+
+def test_classic_pipeline_rescued_by_explicit_subword_mention():
+    included, _ = decide(
+        "Dependency Parsing with Subword Tokenization for Low-Resource Languages",
+        "We study how subword tokenization choices affect downstream dependency "
+        "parsing accuracy for low-resource languages.",
     )
     assert included
 

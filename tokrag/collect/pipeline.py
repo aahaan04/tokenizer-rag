@@ -69,6 +69,27 @@ def _normalize_title(title: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", title.lower())
 
 
+def _link_or_add(norm_title: str, new_candidate, key: str, candidates: dict, title_index: dict, group_counter: list) -> None:
+    """Add `new_candidate` as its own row. If `norm_title` matches an existing
+    candidate (same paper, different source — e.g. an arXiv preprint and its
+    ACL-published version), link the two via a shared candidate_group_id
+    instead of merging them into one row.
+
+    Cross-source duplicates must stay as SEPARATE rows: Phase 4 needs them both
+    present to measure dedup's before/after impact. Merging here (an earlier
+    version of this function did) would silently do Phase 4's job during
+    collection and destroy that signal — see the 2026-10-06 DECISIONS.md entry.
+    """
+    existing = title_index.get(norm_title)
+    if existing is not None:
+        if not existing.candidate_group_id:
+            group_counter[0] += 1
+            existing.candidate_group_id = f"grp{group_counter[0]:04d}"
+        new_candidate.candidate_group_id = existing.candidate_group_id
+    candidates[key] = new_candidate
+    title_index[norm_title] = new_candidate
+
+
 def collect(sample: bool = False) -> list:
     """Run the full (or, if sample=True, a small ~20-candidate) collection pass."""
     if sample:
@@ -174,25 +195,14 @@ def collect(sample: bool = False) -> list:
     # so it runs once, not per query term — and only on the full run, since
     # parsing the ~40MB bulk export is wasted work for a 20-candidate dry run.
     # A single title_index (normalized title -> Candidate) is maintained across
-    # both this ACL pass and the canary injection below, so a canonical paper
-    # found via ACL doesn't get a second, disconnected row when it's also
-    # fetched directly by arXiv id — that duplication happened in an earlier
-    # version of this function (see the 2026-10-06 DECISIONS.md entry).
+    # both this ACL pass and the canary injection below, feeding _link_or_add so
+    # a same-paper match anywhere in the pool gets linked via candidate_group_id
+    # rather than merged into one row (see _link_or_add's docstring for why).
     if not sample:
         title_index = {_normalize_title(c.title): c for c in candidates.values()}
+        group_counter = [0]
 
         for paper in acl_anthology.iter_candidates():
-            norm_title = _normalize_title(paper.title)
-            existing = title_index.get(norm_title)
-            if existing is not None:
-                # Same paper we already have (usually its arXiv preprint) — this
-                # IS useful dedup signal for Phase 4, so record it, don't just enrich silently.
-                existing.doi = existing.doi or paper.doi
-                if paper.venue and (not existing.venue or existing.venue == "arXiv"):
-                    existing.venue = paper.venue
-                existing.query_matched += f"; acl:{paper.anthology_id}"
-                continue
-
             key = f"acl:{paper.anthology_id}"
             if key in candidates:
                 continue
@@ -212,27 +222,38 @@ def collect(sample: bool = False) -> list:
                 included=included,
                 rejection_reason="" if included else reason,
             )
-            candidates[key] = c
-            title_index[norm_title] = c
+            _link_or_add(_normalize_title(paper.title), c, key, candidates, title_index, group_counter)
 
         # Guarantee the canonical papers are present regardless of query
-        # ranking. "Naturally found" = already in the pool (by title, from
-        # either the keyword queries or the ACL bulk pass) before this
-        # injection runs — that's the real signal for "the query set has a
+        # ranking. "Naturally found" = already in the pool (by exact arXiv id,
+        # from the main query loop, or by title, from the ACL bulk pass) before
+        # this injection runs — that's the real signal for "the query set has a
         # gap", separate from whether the paper ends up in the corpus either way.
         naturally_found = {}
-        for arxiv_id, entry in zip(
-            [aid for aid, _ in CANARY_PAPERS], arxiv.fetch_by_ids([aid for aid, _ in CANARY_PAPERS])
-        ):
-            norm_title = _normalize_title(entry.title)
-            existing = title_index.get(norm_title)
-            if existing is not None:
-                naturally_found[arxiv_id] = existing
-                existing.arxiv_id = existing.arxiv_id or entry.arxiv_id
-                existing.arxiv_version = existing.arxiv_version or entry.version
-                existing.source_url = existing.source_url or entry.abs_url
-                existing.query_matched += "; canary_check"
+        # arXiv's id_list API does NOT preserve request order (confirmed by
+        # direct test: requesting [A, B, C] can return [C, A, B]) — zip()ing
+        # the id list against fetch_by_ids() results by position silently
+        # mispairs each canary's label with a *different* paper's actual
+        # content. Index by the entry's own arxiv_id instead. Found
+        # 2026-10-06 after a canary dedup check showed SentencePiece
+        # duplicated and ByT5 missing its arXiv row — see DECISIONS.md.
+        fetched_by_id = {e.arxiv_id: e for e in arxiv.fetch_by_ids([aid for aid, _ in CANARY_PAPERS])}
+        for arxiv_id, _label in CANARY_PAPERS:
+            entry = fetched_by_id.get(arxiv_id)
+            if entry is None:
                 continue
+            key = f"arxiv:{arxiv_id}"
+            norm_title = _normalize_title(entry.title)
+
+            if key in candidates:
+                # The exact same arXiv record the query loop (or an earlier
+                # canary) already added — not a new row, just note it as found.
+                naturally_found[arxiv_id] = candidates[key]
+                continue
+
+            existing_by_title = title_index.get(norm_title)
+            if existing_by_title is not None:
+                naturally_found[arxiv_id] = existing_by_title
 
             included, reason = relevance.decide(entry.title, entry.abstract)
             c = Candidate(
@@ -251,19 +272,20 @@ def collect(sample: bool = False) -> list:
                 included=included,
                 rejection_reason="" if included else reason,
             )
-            candidates[f"arxiv:{arxiv_id}"] = c
-            title_index[norm_title] = c
+            _link_or_add(norm_title, c, key, candidates, title_index, group_counter)
 
     result = list(candidates.values())
     write_manifest(MANIFEST_PATH, result)
 
     if not sample:
-        _report_canaries(naturally_found, candidates, title_index)
+        _report_canaries(naturally_found, candidates)
+        n_groups = len({c.candidate_group_id for c in result if c.candidate_group_id})
+        print(f"\nCross-source same-paper groups linked via candidate_group_id: {n_groups}")
 
     return result
 
 
-def _report_canaries(naturally_found: dict, candidates: dict, title_index: dict) -> None:
+def _report_canaries(naturally_found: dict, candidates: dict) -> None:
     print("\nCanary check (canonical papers the corpus must contain):")
     for arxiv_id, label in CANARY_PAPERS:
         c = naturally_found.get(arxiv_id) or candidates.get(f"arxiv:{arxiv_id}")

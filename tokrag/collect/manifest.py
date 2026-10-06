@@ -28,7 +28,15 @@ class Candidate:
     relevance_score: float = 0.0
     included: bool = False
     rejection_reason: str = ""
-    # Filled in during Phase 4 (dedup); blank until then.
+    # Opportunistic same-paper hint from collection (title match across sources,
+    # e.g. an arXiv preprint and its ACL-published version) — rows sharing a
+    # candidate_group_id are kept as SEPARATE rows deliberately, so Phase 4 can
+    # measure dedup's before/after impact rather than the pair already being
+    # silently collapsed during collection. See the 2026-10-06 DECISIONS.md entry.
+    candidate_group_id: str = ""
+    # Filled in during Phase 4 (dedup); blank until then. Distinct from
+    # candidate_group_id above: this is Phase 4's actual merge decision (DOI/
+    # external-id matching, similarity thresholds), not Phase 1's title hint.
     canonical_id: str = ""
     doc_type: str = ""  # "paper" or "survey"
 
