@@ -40,6 +40,43 @@ def test_html_with_no_headings_falls_back_to_abstract_bucket():
     assert sections[0][0] == "Abstract"
 
 
+def test_pdf_strips_repeated_running_header(tmp_path):
+    import fitz
+
+    doc = fitz.open()
+    for i in range(4):
+        page = doc.new_page()
+        page.insert_text((72, 40), "Proceedings of ACL 2024, pages 1-10", fontsize=9)
+        page.insert_text((72, 72), f"1. Introduction\nBody text on page {i}.", fontsize=11)
+    pdf_path = tmp_path / "running_header.pdf"
+    doc.save(pdf_path)
+    doc.close()
+
+    from tokrag.parse.extract import extract_sections_from_pdf
+
+    sections = extract_sections_from_pdf(pdf_path)
+    full_text = " ".join(t for _, t in sections)
+    assert "Proceedings of ACL 2024" not in full_text
+
+
+def test_pdf_detects_numbered_heading_pattern(tmp_path):
+    import fitz
+
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 72), "1 Introduction\nBody text here.\n4.2 Results\nMore body text.", fontsize=11)
+    pdf_path = tmp_path / "numbered.pdf"
+    doc.save(pdf_path)
+    doc.close()
+
+    from tokrag.parse.extract import extract_sections_from_pdf
+
+    sections = extract_sections_from_pdf(pdf_path)
+    headings = [h for h, _ in sections]
+    assert "Introduction" in headings
+    assert "Results" in headings
+
+
 def test_pdf_extraction_splits_on_recognized_headers(tmp_path):
     import fitz
 

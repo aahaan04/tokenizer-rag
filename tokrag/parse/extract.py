@@ -11,6 +11,7 @@ parser already extracts them as, not specially reconstructed.
 from __future__ import annotations
 
 import re
+from collections import Counter
 from pathlib import Path
 
 import pymupdf as fitz
@@ -53,25 +54,90 @@ def extract_sections_from_html(html_text: str) -> list[tuple[str, str]]:
     return sections
 
 
-# Crude but cheap: a standalone short line matching a common paper section
-# name. Will miss non-standard headers and occasionally misfire on body text
-# that happens to be a short line matching one of these words — acceptable
-# given the "working parse over perfect parse" time budget; see DECISIONS.md.
-_PDF_HEADER_RE = re.compile(
+# Keyword headings (fallback when a line doesn't look numbered but names a
+# common section) — crude but cheap, will occasionally misfire on body text
+# that happens to be a short line matching one of these words.
+_PDF_KEYWORD_HEADING_RE = re.compile(
     r"^\s*(\d{1,2}\.?\d{0,2}\.?\s*)?"
     r"(abstract|introduction|related work|background|method(ology)?|approach|"
     r"experiment(s)?|evaluation|result(s)?|discussion|conclusion(s)?|"
     r"limitations?|acknowledg(e)?ments?|appendix|references|bibliography)\s*$",
     re.IGNORECASE,
 )
+# Numbered headings like "3 Method" or "4.2 Results" — section number followed
+# by a short, capitalized title (not a full sentence).
+_PDF_NUMBERED_HEADING_RE = re.compile(r"^(\d{1,2}(\.\d{1,2}){0,2})\.?\s+[A-Z][\w\-/ ]{1,60}$")
+_REFERENCES_START_RE = re.compile(r"^(\d+\.?\s*)?(references|bibliography)", re.IGNORECASE)
+# Running headers/footers: venue lines, bare page numbers, copyright notices.
+_BOILERPLATE_LINE_RE = re.compile(
+    r"^(proceedings of|page \s*\d+$|^\d{1,4}$|copyright \d|©|"
+    r"association for computational linguistics)",
+    re.IGNORECASE,
+)
+
+
+def _page_lines_with_fonts(doc) -> list[list[tuple[str, float, bool]]]:
+    """Per page, a list of (line_text, font_size, is_bold) — one entry per text line."""
+    pages = []
+    for page in doc:
+        d = page.get_text("dict")
+        lines = []
+        for block in d.get("blocks", []):
+            for line in block.get("lines", []):
+                spans = line.get("spans", [])
+                if not spans:
+                    continue
+                text = "".join(s["text"] for s in spans).strip()
+                if not text:
+                    continue
+                s0 = spans[0]
+                is_bold = bool(s0.get("flags", 0) & (1 << 4)) or "bold" in s0.get("font", "").lower()
+                lines.append((text, s0.get("size", 10.0), is_bold))
+        pages.append(lines)
+    return pages
+
+
+def _strip_running_headers_footers(pages: list[list[tuple[str, float, bool]]]) -> list[list[tuple[str, float, bool]]]:
+    """Drops lines that repeat (near-)verbatim across a large fraction of pages
+    — running headers/footers like the venue/proceedings line PyMuPDF can't
+    otherwise distinguish from body text — plus explicit boilerplate patterns."""
+    if len(pages) < 3:
+        return [[l for l in page if not _BOILERPLATE_LINE_RE.search(l[0])] for page in pages]
+
+    line_page_count = Counter()
+    for page in pages:
+        seen = {text.strip().lower() for text, _, _ in page}
+        for key in seen:
+            line_page_count[key] += 1
+
+    threshold = max(2, int(len(pages) * 0.4))
+    repeated = {k for k, v in line_page_count.items() if v >= threshold}
+
+    return [
+        [l for l in page if l[0].strip().lower() not in repeated and not _BOILERPLATE_LINE_RE.search(l[0])]
+        for page in pages
+    ]
+
+
+def _body_font_size(pages: list[list[tuple[str, float, bool]]]) -> float:
+    char_count_by_size: Counter = Counter()
+    for page in pages:
+        for text, size, _ in page:
+            char_count_by_size[round(size, 1)] += len(text)
+    if not char_count_by_size:
+        return 10.0
+    return char_count_by_size.most_common(1)[0][0]
 
 
 def extract_sections_from_pdf(pdf_path: Path) -> list[tuple[str, str]]:
     doc = fitz.open(pdf_path)
     try:
-        text = "\n".join(page.get_text("text") for page in doc)
+        pages = _page_lines_with_fonts(doc)
     finally:
         doc.close()
+
+    pages = _strip_running_headers_footers(pages)
+    body_size = _body_font_size(pages)
 
     sections: list[tuple[str, str]] = []
     current_heading = "Abstract"
@@ -82,19 +148,25 @@ def extract_sections_from_pdf(pdf_path: Path) -> list[tuple[str, str]]:
         if t:
             sections.append((current_heading, t))
 
-    for line in text.split("\n"):
-        stripped = line.strip()
-        m = _PDF_HEADER_RE.match(stripped) if len(stripped) < 60 else None
-        if m:
-            word = m.group(0).strip()
-            if re.match(r"^(references|bibliography)", word, re.IGNORECASE):
+    for page in pages:
+        for text, size, is_bold in page:
+            heading_text = None
+            if _PDF_NUMBERED_HEADING_RE.match(text):
+                heading_text = text
+            elif len(text) < 60 and _PDF_KEYWORD_HEADING_RE.match(text):
+                heading_text = text
+            elif len(text) < 70 and len(text.split()) <= 8 and (size > body_size + 0.5 or is_bold) and text[:1].isupper():
+                heading_text = text
+
+            if heading_text:
+                if _REFERENCES_START_RE.match(heading_text):
+                    flush()
+                    return sections
                 flush()
-                return sections
-            flush()
-            current_heading = _LEADING_NUMBER_RE.sub("", word).strip().title()
-            current_parts = []
-        elif stripped:
-            current_parts.append(stripped)
+                current_heading = _LEADING_NUMBER_RE.sub("", heading_text).strip().title()
+                current_parts = []
+            else:
+                current_parts.append(text)
     flush()
     return sections
 
