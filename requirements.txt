@@ -1,19 +1,25 @@
+# Pinned to the exact versions verified by the Phase 7 fresh-clone
+# reproducibility test (clean venv, full sample pipeline + test suite
+# passing) -- see DECISIONS.md. Transitive dependencies (torch excepted,
+# since tokrag/index/dense.py imports it directly) are left unpinned.
+
 # Corpus collection
-requests>=2.31
-python-dotenv>=1.0
+requests==2.34.2
+python-dotenv==1.2.4
 
 # Parsing
-pymupdf>=1.24
-beautifulsoup4>=4.12
-lxml>=5.2
+pymupdf==1.28.2
+beautifulsoup4==4.15.0
+lxml==6.1.3
 
 # Retrieval
-sentence-transformers>=3.0
-rank-bm25>=0.2.2
-numpy>=1.26
+sentence-transformers==6.1.0
+torch==2.14.1
+rank-bm25==0.2.2
+numpy==2.2.6
 
 # LLM provider clients (OpenAI-compatible HTTP API covers Groq; requests is enough,
 # no SDK pinned so Gemini can be swapped via the provider interface)
 
 # Dev/test
-pytest>=8.0
+pytest==9.1.1
