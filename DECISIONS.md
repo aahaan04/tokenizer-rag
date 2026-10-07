@@ -345,3 +345,54 @@ deduplicated by `candidate_group_id`. A paper found via arXiv, ACL, and S2 is
 these stats — consistent with the per-row fetching decision above. The
 unique-paper corpus-size figure (723) is the one metric that *does*
 deduplicate by group, and is reported separately for exactly this reason.
+
+## 2026-10-06 — Hard token cap added to the chunker
+
+13.1% of chunks still exceeded 512 tokens after the PDF-extraction fix above —
+bge-small and SPECTER would silently truncate those. Added
+`chunker._split_to_token_cap()`: after the normal word-count split, any chunk
+is recursively halved by word count (never mid-word) until every piece
+tokenizes to <= 450 tokens under the actual target model's tokenizer
+(`bge-small-en-v1.5`), not a word-count estimate — recursion handles the CJK/
+LaTeX-leak pathological cases a single size estimate would get wrong.
+
+Reran the full corpus: total_chunks 28,285 -> 34,779. New distribution: p50
+227, p95 394, p99 440, max 756 tokens; only 2 of 34,779 chunks (0.006%) still
+exceed 450 — both single-"word" LaTeX-markup leakage with no whitespace to
+split on (confirmed by inspection), an accepted edge case rather than a real
+chunk. Fraction exceeding 512 is now ~0.003% (was 13.1%).
+
+## 2026-10-06 — Group-level relevance definition for Recall@5/MRR
+
+This governs every retrieval metric in Phase 3/4/5, especially the dedup
+before/after numbers, so it's spelled out precisely here rather than left
+implicit in eval code.
+
+A retrieved chunk counts as a **hit** for a gold-labeled question if BOTH:
+1. **Paper match**: the chunk's `canonical_paper_id` equals the gold paper's
+   `candidate_group_id` (or, for a paper with no cross-source/version
+   duplicates, its own singleton `paper_id` — `canonical_paper_id` is already
+   set to one or the other for every chunk, see Phase 2). This means retrieving
+   *any* row belonging to the gold paper's group — its arXiv v1, its latest
+   version, its ACL-published copy, its S2 record — counts as finding the
+   right paper. This is deliberate: before Phase 4 dedup, the index can
+   legitimately return any duplicate row and should get credit for finding
+   the paper; Phase 4's job is to stop 3 rows of the *same* paper crowding
+   out 3 *different* relevant papers in the top-5, not to penalize retrieval
+   for the duplication existing in the first place.
+2. **Section match**: `normalize_section(chunk.section_title)` equals, or is a
+   substring of, `normalize_section(gold.section)` (normalize = lowercase,
+   strip leading section numbers and punctuation — the same chunk's section
+   can read "1 Introduction" from one extractor and "Introduction" from
+   another). A paper-level match in the wrong section is NOT a hit — gold
+   labels are at paper+section granularity specifically so chunking or
+   indexing changes don't silently inflate Recall@5 by rewarding "found the
+   right paper, wrong part."
+
+Consequence for the "duplicate rate in top-5" metric (Phase 4): computed
+*before* this definition's paper-match collapsing — i.e., it counts how many
+of the top-5 chunks share a `canonical_paper_id` with another chunk already
+in that same top-5, which is exactly the "3 versions of Paper A crowding the
+other 2 slots" case the brief's example illustrates. Recall@5/MRR use the hit
+definition above; the duplicate-rate metric is a separate count over the same
+top-5 list.

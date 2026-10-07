@@ -20,6 +20,13 @@ MIN_USABLE_CHARS = 200  # extracted text shorter than this is treated as a faile
 
 
 def run(limit: int | None = None) -> dict:
+    from transformers import AutoTokenizer
+
+    # Hard token cap uses the actual target embedding model's tokenizer (not
+    # word count) so chunks can't silently exceed it regardless of how dense
+    # the text is — see chunker.py and the 2026-10-06 DECISIONS.md entries.
+    cap_tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-small-en-v1.5")
+
     all_rows = read_manifest(MANIFEST_PATH)
     rows = [r for r in all_rows if r.included]
     if limit:
@@ -73,7 +80,7 @@ def run(limit: int | None = None) -> dict:
         if not sections:
             continue
 
-        for c in chunker.chunk_sections(sections):
+        for c in chunker.chunk_sections(sections, tokenizer=cap_tokenizer):
             chunks_out.append(
                 {
                     "paper_id": key,
