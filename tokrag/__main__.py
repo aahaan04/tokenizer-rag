@@ -3,12 +3,21 @@
 import argparse
 import sys
 
+# GPT-OSS answers routinely contain non-ASCII punctuation (en/em dashes,
+# non-breaking hyphens, full-width brackets) that crash a plain `print()` on
+# Windows terminals using a legacy codepage (cp1252) -- found via the Phase 7
+# fresh-clone reproducibility test, which hit this on the very first chat
+# question. Force UTF-8 on stdout/stderr regardless of the system codepage.
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 
 def cmd_collect(args: argparse.Namespace) -> None:
     from tokrag.collect.pipeline import collect
     from tokrag.config import MANIFEST_PATH
 
-    candidates = collect(sample=args.sample)
+    candidates = collect(sample_n=args.sample)
     included = sum(1 for c in candidates if c.included)
     print(f"Collected {len(candidates)} unique candidates: {included} included, {len(candidates) - included} rejected.")
     print(f"Manifest written to {MANIFEST_PATH}")
@@ -89,7 +98,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_collect = sub.add_parser("collect", help="run the corpus collection pipeline")
-    p_collect.add_argument("--sample", action="store_true", help="small ~20-candidate dry run instead of the full pass")
+    p_collect.add_argument(
+        "--sample", type=int, default=None, metavar="N",
+        help="small end-to-end dry run: cap collection to ~N included candidates instead of the full pass",
+    )
     p_collect.set_defaults(func=cmd_collect)
 
     p_parse = sub.add_parser("parse", help="parse and chunk collected papers")

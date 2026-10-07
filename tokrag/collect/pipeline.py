@@ -92,11 +92,23 @@ def _link_or_add(norm_title: str, new_candidate, key: str, candidates: dict, tit
     title_index[norm_title] = new_candidate
 
 
-def collect(sample: bool = False) -> list:
-    """Run the full (or, if sample=True, a small ~20-candidate) collection pass."""
-    if sample:
-        query_terms = QUERY_TERMS[:3]
-        max_per_query = 6
+def collect(sample: bool = False, sample_n: int | None = None) -> list:
+    """Run the full collection pass, or a small end-to-end sample pass.
+
+    `sample_n` (if given) caps the collection to approximately that many
+    INCLUDED candidates, using a handful of query terms and skipping the ACL
+    Anthology bulk download and the canonical-paper canary injection (both
+    network/time-heavy and unnecessary for a quick pipeline smoke test) — see
+    the Phase 7 README section for the full --sample N quickstart. `sample`
+    (bare bool, kept for backward compatibility) is equivalent to
+    `sample_n=20`.
+    """
+    if sample_n is None and sample:
+        sample_n = 20
+
+    if sample_n is not None:
+        query_terms = QUERY_TERMS[:5]
+        max_per_query = max(10, sample_n * 2)  # headroom: relevance filtering rejects a chunk of raw hits
     else:
         query_terms = QUERY_TERMS
         max_per_query = 60
@@ -200,7 +212,7 @@ def collect(sample: bool = False) -> list:
     # both this ACL pass and the canary injection below, feeding _link_or_add so
     # a same-paper match anywhere in the pool gets linked via candidate_group_id
     # rather than merged into one row (see _link_or_add's docstring for why).
-    if not sample:
+    if sample_n is None:
         title_index = {_normalize_title(c.title): c for c in candidates.values()}
         group_counter = [0]
 
@@ -277,14 +289,29 @@ def collect(sample: bool = False) -> list:
             _link_or_add(norm_title, c, key, candidates, title_index, group_counter)
 
     result = list(candidates.values())
+
+    if sample_n is not None:
+        # Cap to approximately sample_n INCLUDED candidates (highest relevance
+        # score first), keeping all rejected rows found along the way for a
+        # realistic manifest shape — downstream `parse --limit` isn't needed
+        # since this already bounds the included count directly.
+        included = sorted((c for c in result if c.included), key=lambda c: -c.relevance_score)
+        rejected = [c for c in result if not c.included]
+        keep_ids = {id(c) for c in included[:sample_n]}
+        result = [c for c in result if c.included and id(c) in keep_ids] + rejected
+
     write_manifest(MANIFEST_PATH, result)
 
-    if not sample:
+    if sample_n is None:
         _report_canaries(naturally_found, candidates)
         write_manifest_summary(MANIFEST_SUMMARY_PATH, result)
         n_groups = len({c.candidate_group_id for c in result if c.candidate_group_id})
         print(f"\nCross-source same-paper groups linked via candidate_group_id: {n_groups}")
         print(f"Manifest summary written to {MANIFEST_SUMMARY_PATH}")
+    else:
+        write_manifest_summary(MANIFEST_SUMMARY_PATH, result)
+        n_included = sum(1 for c in result if c.included)
+        print(f"\nSample collection: {n_included} included candidates (target {sample_n}), {len(result) - n_included} rejected.")
 
     return result
 
