@@ -72,8 +72,9 @@ ANSWER_SYSTEM_PROMPT = (
 # Matches both the requested ASCII [N] and full-width 【N】, which some
 # Groq/GPT-OSS responses use despite the prompt's explicit instruction not to
 # — found via manual testing (see DECISIONS.md). Parsing both is a safety
-# net; the prompt fix is the primary mitigation.
-_CITATION_RE = re.compile(r"[\[【](\d+)[\]】]")
+# net; the prompt fix is the primary mitigation. Also accepts the
+# line-range variant 【N†L1-L4】 (found in the pre-submission smoke test).
+_CITATION_RE = re.compile(r"[\[【](\d+)(?:†[^\]】]*)?[\]】]")
 
 
 def detect_model_abstention(answer: str) -> bool:

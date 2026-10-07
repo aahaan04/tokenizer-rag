@@ -1312,3 +1312,12 @@ After all three fixes: full sample-mode quickstart (`collect --sample 30`
 in a brand-new venv, and the full 103-test suite passes there too.
 Real, measured sample-mode timings (not estimates) are now in README.md's
 timing table, replacing the earlier warm-cache extrapolation for `parse`.
+
+## 2026-10-07 — Citation parser: the 【N†Lx-Ly】 variant
+
+The pre-submission smoke test asked one live question; the model cited as
+`【1†L1-L4】`, which `_CITATION_RE` didn't match, so the answer printed no
+Sources list. Fixed the regex to accept an optional `†...` suffix, with a
+regression test. The reported citation rate (0.91, 21/23) was measured
+before this fix: q17 used this format and was counted as uncited, so that
+figure is conservative. The chat eval was not re-run.

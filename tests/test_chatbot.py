@@ -21,6 +21,13 @@ def test_parse_used_citations_fullwidth_brackets():
     assert [c.index for c in used] == [1]
 
 
+def test_parse_used_citations_dagger_line_range_suffix():
+    # Found in the pre-submission smoke test: GPT-OSS sometimes cites as
+    # 【N†L1-L4】, which the parser used to miss entirely.
+    used = parse_used_citations("spaces as chars【1†L1-L4】 unlike WordPiece【3†L2-L5】.", _citations(3))
+    assert [c.index for c in used] == [1, 3]
+
+
 def test_parse_used_citations_drops_out_of_range_reference():
     citations = _citations(2)
     answer = "According to [5], the answer is X."  # source 5 was never provided
