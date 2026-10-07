@@ -14,8 +14,10 @@ import json
 import re
 
 from tokrag.collect import acl_anthology, arxiv, relevance, semantic_scholar
-from tokrag.collect.manifest import Candidate, write_manifest
-from tokrag.config import MANIFEST_PATH
+from tokrag.collect.manifest import Candidate, read_manifest, write_manifest, write_manifest_summary
+from tokrag.config import MANIFEST_PATH, PROJECT_ROOT
+
+MANIFEST_SUMMARY_PATH = PROJECT_ROOT / "manifest_summary.md"
 
 QUERY_TERMS = [
     "byte-level tokenization language model",
@@ -279,8 +281,10 @@ def collect(sample: bool = False) -> list:
 
     if not sample:
         _report_canaries(naturally_found, candidates)
+        write_manifest_summary(MANIFEST_SUMMARY_PATH, result)
         n_groups = len({c.candidate_group_id for c in result if c.candidate_group_id})
         print(f"\nCross-source same-paper groups linked via candidate_group_id: {n_groups}")
+        print(f"Manifest summary written to {MANIFEST_SUMMARY_PATH}")
 
     return result
 
@@ -296,3 +300,69 @@ def _report_canaries(naturally_found: dict, candidates: dict) -> None:
             print(f"  INCLUDED  {label} ({arxiv_id}) — {found_by_queries}")
         else:
             print(f"  REJECTED  {label} ({arxiv_id}) — score={c.relevance_score:.1f}, reason={c.rejection_reason}")
+
+
+def add_arxiv_version_pairs(limit: int = 25) -> list:
+    """Add the v1 (original) text of a sample of multi-version included arXiv
+    papers as separate rows, linked by candidate_group_id to the existing
+    latest-version row.
+
+    arXiv search only ever returns a paper's LATEST version, so collection
+    never naturally produces the "multiple arXiv versions of the same paper"
+    duplicate case the brief names first for Phase 4. This deliberately
+    introduces it for a small sample (not corpus breadth) so Phase 4 has real
+    cases to detect and measure. Idempotent: skips a paper if its v1 row
+    already exists (safe to rerun).
+    """
+    rows = read_manifest(MANIFEST_PATH)
+    existing_source_ids = {c.source_id for c in rows}
+
+    multi_version = [
+        c
+        for c in rows
+        if c.included and c.source == "arxiv" and c.arxiv_version not in ("", "v1")
+        and f"{c.arxiv_id}v1" not in existing_source_ids
+    ]
+    # Prefer more-versioned papers first (v3+) — more interesting for dedup testing than a plain v1->v2.
+    multi_version.sort(key=lambda c: -int(c.arxiv_version.lstrip("v") or 1))
+    selected = multi_version[:limit]
+
+    fetched_v1 = {e.arxiv_id: e for e in arxiv.fetch_by_ids([f"{c.arxiv_id}v1" for c in selected])}
+
+    existing_group_nums = [int(c.candidate_group_id[3:]) for c in rows if c.candidate_group_id]
+    group_counter = [max(existing_group_nums, default=0)]
+
+    new_rows = []
+    for c in selected:
+        entry = fetched_v1.get(c.arxiv_id)
+        if entry is None:
+            continue
+        if not c.candidate_group_id:
+            group_counter[0] += 1
+            c.candidate_group_id = f"grp{group_counter[0]:04d}"
+
+        included, reason = relevance.decide(entry.title, entry.abstract)
+        new_rows.append(
+            Candidate(
+                source="arxiv",
+                source_id=f"{entry.arxiv_id}{entry.version}",
+                arxiv_id=entry.arxiv_id,
+                arxiv_version=entry.version,
+                title=entry.title,
+                authors=c.authors,
+                year=entry.published[:4],
+                venue="arXiv",
+                abstract=entry.abstract,
+                source_url=entry.abs_url,
+                query_matched="arxiv_version_pair",
+                relevance_score=relevance.score(entry.title, entry.abstract),
+                included=included,
+                rejection_reason="" if included else reason,
+                candidate_group_id=c.candidate_group_id,
+            )
+        )
+
+    all_rows = rows + new_rows
+    write_manifest(MANIFEST_PATH, all_rows)
+    write_manifest_summary(MANIFEST_SUMMARY_PATH, all_rows)
+    return new_rows
