@@ -437,3 +437,162 @@ interrupted run resumes rather than restarting — the actual risk worth
 engineering around for an hour-plus unattended run, not the embed speed
 itself. Launched the full SPECTER embedding in the background under this
 resumable path.
+
+SPECTER finished: 7,616.9s (~127 min) for 34,779 chunks, 4.6 chunks/s —
+slower than bge-small's 7.3 chunks/s (SPECTER is BERT-base-sized, 768-dim vs
+bge-small's 384), consistent with the 100-chunk benchmark's 5.57 chunks/s
+estimate. Both the bge-small and SPECTER dense indexes are now built.
+
+## 2026-10-06 — Eval scoring definitions, pinned down before running Phase 5
+
+Per the user's explicit request at Checkpoint 3, these are fixed now so
+Phase 5's numbers aren't shaped by whatever happened to be convenient when
+the eval script was first written.
+
+**Recall@5 for a multi-gold question** (multi_paper type, gold = a list of
+(group_id, span) pairs): the fraction of DISTINCT gold groups with at least
+one hit in the top-5 — not "any gold hit = 1.0". A question with 2 gold
+papers where only 1 is retrieved scores 0.5, not 1.0. Implemented as
+`recall_at_k_multi()`; a single-gold question is the 1-gold special case and
+scores identically to `recall_at_k()`.
+
+**MRR for a multi-gold question**: reciprocal rank of the FIRST chunk in the
+ranked list that hits ANY gold pair — not averaged over golds. This matches
+standard MRR semantics (first relevant result) rather than inventing a
+multi-gold variant of MRR itself. Implemented as `reciprocal_rank_multi()`.
+
+**Unanswerable questions (gold = []) are excluded from Recall@5/MRR
+entirely** — they contribute 0 to neither the numerator nor the denominator
+of those averages, computed only over the 29 answerable questions. They are
+scored separately, on abstention: whether the system correctly declines to
+answer (checked against retrieval-score strength and, once the Phase 6
+chatbot's instruction-level check exists, whether it actually output an
+abstention). Abstention precision/recall is its own metric, not folded into
+Recall@5/MRR — mixing them would make a system's Recall@5 look artificially
+bad for correctly abstaining, and an abstention failure look like a
+retrieval failure.
+
+**Follow-up questions are evaluated twice**: once retrieving on the Phase 6
+system's own LLM-rewritten standalone query, and once retrieving on a
+human-written gold standalone rewrite stored in each follow-up question's
+`gold_standalone_rewrite` field in `eval/questions.jsonl`. Comparing the two
+runs' Recall@5/MRR separates query-rewrite failures (system's rewrite
+retrieves worse than the gold rewrite would have) from retrieval failures
+(even the gold rewrite doesn't retrieve the right chunk) — collapsing them
+into one number would make it impossible to tell which part of the pipeline
+to fix. `gold_standalone_rewrite` is `null` for non-follow-up questions.
+
+## 2026-10-07 — Phase 4 dedup pipeline: canonical_id, surveys, false-merge audit
+
+`tokrag/dedup/` adds three pieces on top of Phase 1's existing
+`candidate_group_id` grouping (which stays the dedup unit — see earlier
+entries): `pipeline.assign_canonical_ids()` picks one representative row per
+group (priority: ACL-published > arXiv-latest > Semantic Scholar — a
+peer-reviewed copy is the more authoritative citation), `assign_doc_types()`
+flags surveys via `dedup/survey.py` (title/abstract keyword match: "survey,"
+"systematic review," "we survey," etc.) without merging them into the papers
+they discuss, and `audit_groups()` + `find_near_miss_pairs()` produce
+`dedup_audit.md`: pairwise title/author/abstract-cosine similarity for every
+existing group (flagging low-confidence ones), plus a bounded (author-surname-
+blocked, not O(n^2)) scan for near-miss pairs sharing an author with a
+similar-but-not-identical title — the brief's "paper and its follow-up" risk
+check.
+
+Result: 104 groups / 146 pairs audited, 4 surveys flagged, 114 near-miss
+pairs found. 22 pairs initially flagged "low confidence" (abstract cosine <
+0.7 or zero author overlap) turned out to almost all be a measurement
+artifact, not real false merges — see the bug entry directly below.
+
+## 2026-10-07 — Real bug found via the audit: ACL author field silently dropped for brace-delimited values
+
+The false-merge audit's 22 "low-confidence" flags were nearly all
+identical-title, near-1.0-abstract-cosine pairs with author_overlap=0.0 —
+clearly correct merges, but scored as suspicious. Investigated one
+(`grp0016`, "One Tokenizer To Rule Them All"): its ACL-sourced row's
+`authors` field contained the conference's program-chair names (Liakata,
+Moreira, Zhang, Jurgens) instead of the paper's actual authors (Abagyan,
+Salamanca, Cruz-Salinas, ...).
+
+Root cause: `acl_anthology.py`'s field regex (`_FIELD_RE`) only matched
+double-quoted BibTeX fields (`key = "value"`). BibTeX also allows
+brace-delimited fields (`key = {value}`), which exporters switch to when a
+field needs its own nested-brace LaTeX escaping — exactly the case for an
+author name with a diacritic (Üstün rendered as `{\"U}st{\"u}n`). The quoted-
+only regex silently failed to capture that `author` field, and
+`_parse_entry`'s `fields.get("author", "") or fields.get("editor", "")`
+fallback then substituted the conference's `editor` field (venue chairs) —
+syntactically valid, semantically wrong.
+
+Fixed `_FIELD_RE` to match both quoted and (one-level-nested) brace-delimited
+values. Re-parsing the cached bib file (no network needed — this is a local
+reparse of already-downloaded data) found **181 of 6,661 ACL rows (2.7%)**
+had this wrong `authors` value; patched directly into `manifest.csv` without
+a full Phase 1 rerun, since only the `authors` text column needed correcting
+(titles, scores, grouping, included status were all unaffected — grouping is
+by title, not author). Re-ran the dedup audit after the fix: author_overlap
+now correctly reflects shared authors for these rows, and the 22
+"low-confidence" flags all resolved to the correct cause (measurement
+artifact, not false merges) — see `dedup_audit.md` for the post-fix numbers.
+Added a regression test (`test_parse_entry_handles_brace_delimited_author_field`).
+
+## 2026-10-07 — Dedup false-merge audit: findings
+
+All 18 remaining "low-confidence" pairs (post author-fix) have title_sim=1.0
+— i.e. every one is an identical-title pair, overwhelming evidence of a
+correct merge; the low author-overlap/abstract-cosine scores on these come
+from Semantic Scholar's abstracts/author lists often being shorter or
+differently formatted than the full ACL/arXiv text, not from the papers
+being different. **Zero likely false merges found among the 104 groups.**
+
+The near-miss scan (115 pairs, author-shared + title-similar but NOT merged)
+surfaced one genuinely interesting case worth a human look, not auto-merged:
+two Semantic Scholar records both titled "MorphBPE..." (title_sim=0.667),
+same three core authors (Asgari, El Kheir, Sadraei Javaheri) plus one added
+author, near-identical abstract opening, years 2025 and 2026 — reads like a
+preprint retitled for its 2026 publication, which Phase 1's exact-title
+matching correctly wouldn't have caught (titles genuinely differ). Flagged in
+`dedup_audit.md` for manual confirmation rather than merged on a fuzzy
+heuristic alone.
+
+The scan also confirmed the risky "paper and its follow-up" case is handled
+correctly: e.g. Guo 1997 "Longest Tokenization" vs Guo 1998 "One Tokenization
+per Source" (same author, sequential years, title_sim=0.681) — correctly
+listed as a near-miss, NOT merged, since they're genuinely different papers.
+
+## 2026-10-07 — Diversification before/after: duplicate rate, Recall@5, MRR
+
+Measured on the 29 answerable eval questions, bge-small dense retrieval,
+k=5 (`tokrag eval` / `tokrag eval --diversify`):
+
+| | duplicate_rate@5 | Recall@5 | MRR |
+|---|---|---|---|
+| Before (raw top-5) | 0.324 | 0.293 | 0.240 |
+| After (diversify: cap 1/paper + survey demotion) | **0.000** | 0.224 | 0.224 |
+
+Duplicate rate drops to exactly 0 by construction (the cap guarantees it) —
+confirms the brief's illustrative problem is real in this corpus: before
+diversification, 32% of top-5 slots were a repeat of a paper already in that
+same top-5.
+
+Recall@5/MRR both **decreased** after diversification — checked this is a
+real effect, not a bug (traced two cases, q06 and q27): the raw top-5
+sometimes contained 3-4 chunks from the SAME paper (different
+arXiv/ACL/S2 copies), and by chance at least one of those redundant copies'
+chunk text contained the gold supporting span even when others didn't
+(extraction differences between an ACL PDF copy and an arXiv HTML copy of
+the same paper produce slightly different chunk boundaries/content).
+Diversification keeps only the single highest-embedding-similarity chunk per
+paper, which isn't always the one whose text happens to contain the answer.
+This is a genuine, explainable trade-off of "cap 1 chunk per paper" as a
+diversification strategy, not a defect: it buys clean top-5 slots (no
+wasted slots on a paper already represented) at a small cost in the rare
+case where only a non-top-ranked copy of the right paper's chunk carries the
+specific evidence. A more sophisticated strategy (e.g. picking the
+best-matching chunk per paper rather than the first-ranked one, or keeping 2
+chunks for groups with low intra-group chunk agreement) would likely recover
+this, but is out of scope for the time available — noted as a limitation in
+WRITEUP.md. Absolute Recall@5/MRR are low in both configurations (~22-29%)
+because this is the bge-small-only baseline; Phase 5 compares against BM25,
+SPECTER, and hybrid retrieval, which are expected to do meaningfully better
+on this corpus's exact-terminology-heavy questions (see the brief's own
+"SentencePiece"/"fertility" example).

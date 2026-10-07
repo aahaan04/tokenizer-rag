@@ -1,0 +1,561 @@
+# Dedup false-merge audit
+
+Groups audited: 104
+Pairs audited: 146
+Low-confidence merges (abstract cosine < 0.7 OR zero author overlap): 18
+Surveys flagged: 4
+Near-miss pairs (NOT merged, similar title + shared author): 115
+
+## Low-confidence merges (manual review)
+
+- **grp0004**: title_sim=1.0 author_overlap=0.143 abstract_cosine=0.54
+  - A: The Impact of Tokenization Algorithms on Hungarian Language Model Performance (acl_anthology:osvath-etal-2026-impact)
+  - B: The Impact of Tokenization Algorithms on Hungarian Language Model Performance (semantic_scholar:ddecf5aafd7cf50142de267ec2ac5a72ee11520e)
+- **grp0008**: title_sim=1.0 author_overlap=0.0 abstract_cosine=1.0
+  - A: Evaluating Morphological Plausibility of Subword Tokenization via Statistical Alignment with Morpho-Syntactic Features (arxiv:2601.18536v1)
+  - B: Evaluating Morphological Plausibility of Subword Tokenization via Statistical Alignment with Morpho-Syntactic Features (acl_anthology:stephen-libovicky-2026-evaluating)
+- **grp0028**: title_sim=1.0 author_overlap=0.0 abstract_cosine=0.521
+  - A: Tokenization and Morphology in Multilingual Language Models: A Comparative Analysis of mT5 and ByT5 (arxiv:2410.11627v2)
+  - B: Tokenization and Morphology in Multilingual Language Models: A Comparative Analysis of mT5 and ByT5 (acl_anthology:dang-etal-2025-tokenization)
+- **grp0028**: title_sim=0.995 author_overlap=0.0 abstract_cosine=0.525
+  - A: Tokenization and Morphology in Multilingual Language Models: A~Comparative Analysis of mT5 and ByT5 (arxiv:2410.11627v1)
+  - B: Tokenization and Morphology in Multilingual Language Models: A Comparative Analysis of mT5 and ByT5 (acl_anthology:dang-etal-2025-tokenization)
+- **grp0057**: title_sim=1.0 author_overlap=0.0 abstract_cosine=1.0
+  - A: Subword models struggle with word learning, but surprisal hides it (semantic_scholar:b20531c07fa8517ae0d2eace3cf6b431ee1e3e31)
+  - B: Subword models struggle with word learning, but surprisal hides it (acl_anthology:bunzeck-zarriess-2025-subword)
+- **grp0067**: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.533
+  - A: A Comparison of Different Tokenization Methods for the Georgian Language (acl_anthology:mikaberidze-etal-2024-comparison)
+  - B: A Comparison of Different Tokenization Methods for the Georgian Language (semantic_scholar:908676b78895326f115e2edfc049fbd8c19c980e)
+- **grp0068**: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.541
+  - A: OFA: A Framework of Initializing Unseen Subword Embeddings for Efficient Large-scale Multilingual Continued Pretraining (semantic_scholar:c61065446ad3f2851b6553afeb5e6afc3fabdf94)
+  - B: OFA: A Framework of Initializing Unseen Subword Embeddings for Efficient Large-scale Multilingual Continued Pretraining (acl_anthology:liu-etal-2024-ofa)
+- **grp0082**: title_sim=1.0 author_overlap=0.333 abstract_cosine=0.544
+  - A: Leading Whitespaces of Language Models’ Subword Vocabulary Pose a Confound for Calculating Word Probabilities (semantic_scholar:f4a6b2d967c727c0e777d2d9e4e08f490e32dd2a)
+  - B: Leading Whitespaces of Language Models' Subword Vocabulary Pose a Confound for Calculating Word Probabilities (acl_anthology:oh-schuler-2024-leading)
+- **grp0086**: title_sim=1.0 author_overlap=0.0 abstract_cosine=0.999
+  - A: Lexically Grounded Subword Segmentation (semantic_scholar:c06c8aff22a7e446e938ab3c2ba5e9bcfc1cefd3)
+  - B: Lexically Grounded Subword Segmentation (acl_anthology:libovicky-helcl-2024-lexically)
+- **grp0094**: title_sim=1.0 author_overlap=0.5 abstract_cosine=0.569
+  - A: SubMerge: Merging Equivalent Subword Tokenizations for Subword Regularized Models in Neural Machine Translation (acl_anthology:song-etal-2024-submerge)
+  - B: SubMerge: Merging Equivalent Subword Tokenizations for Subword Regularized Models in Neural Machine Translation (semantic_scholar:cdcd63e787819485988c6dd8bb9cb7180a5248c2)
+- **grp0103**: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.522
+  - A: Exploring the Impact of Training Data Distribution and Subword Tokenization on Gender Bias in Machine Translation (arxiv:2309.12491v2)
+  - B: Exploring the Impact of Training Data Distribution and Subword Tokenization on Gender Bias in Machine Translation (acl_anthology:iluz-etal-2023-exploring)
+- **grp0103**: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.522
+  - A: Exploring the Impact of Training Data Distribution and Subword Tokenization on Gender Bias in Machine Translation (arxiv:2309.12491v1)
+  - B: Exploring the Impact of Training Data Distribution and Subword Tokenization on Gender Bias in Machine Translation (acl_anthology:iluz-etal-2023-exploring)
+- **grp0104**: title_sim=1.0 author_overlap=0.0 abstract_cosine=1.0
+  - A: Reducing tokenizer's tokens per word ratio in Financial domain with T-MuFin BERT Tokenizer (acl_anthology:gopalakrishnan-etal-2023-reducing)
+  - B: Reducing tokenizer’s tokens per word ratio in Financial domain with T-MuFin BERT Tokenizer (semantic_scholar:b767c04cd0fc659f71fa90f87af0b778a0d04886)
+- **grp0132**: title_sim=1.0 author_overlap=0.0 abstract_cosine=1.0
+  - A: MaxMatch-Dropout: Subword Regularization for WordPiece (semantic_scholar:8c82d3d758897ef9f166924683831ecf6085f21a)
+  - B: MaxMatch-Dropout: Subword Regularization for WordPiece (acl_anthology:hiraoka-2022-maxmatch)
+- **grp0151**: title_sim=1.0 author_overlap=0.0 abstract_cosine=1.0
+  - A: Subword Regularization: Improving Neural Network Translation Models with Multiple Subword Candidates (arxiv:1804.10959v1)
+  - B: Subword Regularization: Improving Neural Network Translation Models with Multiple Subword Candidates (acl_anthology:kudo-2018-subword)
+- **grp0155**: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.536
+  - A: Neural Machine Translation of Rare Words with Subword Units (semantic_scholar:1518039b5001f1836565215eb047526b3ac7f462)
+  - B: Neural Machine Translation of Rare Words with Subword Units (acl_anthology:sennrich-etal-2016-neural)
+- **grp0155**: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.536
+  - A: Neural Machine Translation of Rare Words with Subword Units (arxiv:1508.07909v5)
+  - B: Neural Machine Translation of Rare Words with Subword Units (acl_anthology:sennrich-etal-2016-neural)
+- **grp0155**: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.538
+  - A: Neural Machine Translation of Rare Words with Subword Units (arxiv:1508.07909v1)
+  - B: Neural Machine Translation of Rare Words with Subword Units (acl_anthology:sennrich-etal-2016-neural)
+
+## All merge-cluster pairwise scores
+
+- grp0002: title_sim=1.0 author_overlap=0.333 abstract_cosine=0.997 | Modelling the Morphology of Verbal Paradigms: A Case Study in the Toke
+- grp0004: title_sim=1.0 author_overlap=0.143 abstract_cosine=0.54 | The Impact of Tokenization Algorithms on Hungarian Language Model Perf
+- grp0005: title_sim=1.0 author_overlap=0.5 abstract_cosine=1.0 | LGSE: Lexically Grounded Subword Embedding Initialization for Low-Reso
+- grp0006: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.999 | NE-BERT: A Multilingual Language Model for Nine Northeast Indian Langu
+- grp0007: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Tokenization and Morphological Fidelity in Uralic NLP: A Cross-Lingual
+- grp0007: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Tokenization and Morphological Fidelity in Uralic NLP: A Cross-Lingual
+- grp0007: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Tokenization and Morphological Fidelity in Uralic NLP: A Cross-Lingual
+- grp0008: title_sim=1.0 author_overlap=0.0 abstract_cosine=1.0 | Evaluating Morphological Plausibility of Subword Tokenization via Stat
+- grp0009: title_sim=1.0 author_overlap=0.273 abstract_cosine=0.998 | Understanding Secret Leakage Risks in Code LLMs: A Tokenization Perspe
+- grp0012: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.998 | MorphBPE: Morphology-Aware Tokenization for Efficient LLM Training
+- grp0013: title_sim=1.0 author_overlap=0.333 abstract_cosine=1.0 | AdaptBPE: From General Purpose to Specialized Tokenizers
+- grp0014: title_sim=1.0 author_overlap=0.667 abstract_cosine=1.0 | Stop Taking Tokenizers for Granted: They Are Core Design Decisions in 
+- grp0015: title_sim=1.0 author_overlap=0.4 abstract_cosine=0.996 | The Token Tax: Systematic Bias in Multilingual Tokenization
+- grp0016: title_sim=1.0 author_overlap=0.636 abstract_cosine=0.995 | One Tokenizer To Rule Them All: Emergent Language Plasticity via Multi
+- grp0017: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.999 | Parity-Aware Byte-Pair Encoding: Improving Cross-lingual Fairness in T
+- grp0018: title_sim=1.0 author_overlap=0.333 abstract_cosine=0.994 | Comparative Analysis of the Intrinsic Metrics for Tokenizers and their
+- grp0019: title_sim=1.0 author_overlap=0.5 abstract_cosine=1.0 | Phonemes to the Rescue: Multilingual Tokenization Based on Internation
+- grp0020: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.997 | Paramanu: Compact and Competitive Monolingual Language Models for Low-
+- grp0021: title_sim=1.0 author_overlap=0.667 abstract_cosine=1.0 | MUTANT: A Recipe for Multilingual Tokenizer Design
+- grp0022: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Peek2: Regex-free Byte-level Byte-Pair Encoding Pretokenizer for LLM I
+- grp0026: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.999 | SampoNLP: A Self-Referential Toolkit for Morphological Analysis of Sub
+- grp0027: title_sim=1.0 author_overlap=0.333 abstract_cosine=1.0 | Rethinking Tokenization for Rich Morphology: The Dominance of Unigram 
+- grp0028: title_sim=0.995 author_overlap=1.0 abstract_cosine=0.997 | Tokenization and Morphology in Multilingual Language Models: A Compara
+- grp0028: title_sim=1.0 author_overlap=0.0 abstract_cosine=0.521 | Tokenization and Morphology in Multilingual Language Models: A Compara
+- grp0028: title_sim=0.995 author_overlap=0.0 abstract_cosine=0.525 | Tokenization and Morphology in Multilingual Language Models: A~Compara
+- grp0029: title_sim=1.0 author_overlap=0.5 abstract_cosine=1.0 | PortBERT: Navigating the Depths of Portuguese Language Models
+- grp0030: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Can Perplexity Predict Fine-Tuning Performance? An Investigation of To
+- grp0031: title_sim=1.0 author_overlap=0.286 abstract_cosine=0.999 | Optimizing LLMs for Italian: Reducing Token Fertility and Enhancing Ef
+- grp0032: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Large Vocabulary Size Improves Large Language Models
+- grp0033: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Tokenization is Sensitive to Language Variation
+- grp0035: title_sim=1.0 author_overlap=0.667 abstract_cosine=0.995 | Unsupervised Morphological Tree Tokenizer
+- grp0036: title_sim=1.0 author_overlap=0.75 abstract_cosine=1.0 | Splintering Nonconcatenative Languages for Better Tokenization
+- grp0037: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.995 | MoVoC: Morphology-Aware Subword Construction for Ge'ez Script Language
+- grp0042: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.994 | Date Fragments: A Hidden Bottleneck of Tokenization for Temporal Reaso
+- grp0045: title_sim=1.0 author_overlap=0.429 abstract_cosine=1.0 | Improbable Bigrams Expose Vulnerabilities of Incomplete Tokens in Byte
+- grp0048: title_sim=1.0 author_overlap=0.333 abstract_cosine=1.0 | SubRegWeigh: Effective and Efficient Annotation Weighing with Subword 
+- grp0048: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.992 | SubRegWeigh: Effective and Efficient Annotation Weighing with Subword 
+- grp0048: title_sim=1.0 author_overlap=0.333 abstract_cosine=0.992 | SubRegWeigh: Effective and Efficient Annotation Weighing with Subword 
+- grp0050: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Tokenization as Finite-State Transduction
+- grp0051: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.997 | The Lookahead Limitation: Why Multi-Operand Addition is Hard for LLMs
+- grp0053: title_sim=1.0 author_overlap=0.414 abstract_cosine=0.996 | Second Language (Arabic) Acquisition of LLMs via Progressive Vocabular
+- grp0056: title_sim=1.0 author_overlap=0.5 abstract_cosine=0.999 | Retrofitting (Large) Language Models with Dynamic Tokenization
+- grp0057: title_sim=1.0 author_overlap=0.0 abstract_cosine=1.0 | Subword models struggle with word learning, but surprisal hides it
+- grp0060: title_sim=1.0 author_overlap=0.667 abstract_cosine=1.0 | Revisiting subword tokenization: A case study on affixal negation in l
+- grp0060: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Revisiting subword tokenization: A case study on affixal negation in l
+- grp0060: title_sim=1.0 author_overlap=0.667 abstract_cosine=1.0 | Revisiting subword tokenization: A case study on affixal negation in l
+- grp0063: title_sim=1.0 author_overlap=0.25 abstract_cosine=1.0 | How Important Is Tokenization in French Medical Masked Language Models
+- grp0063: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | How Important Is Tokenization in French Medical Masked Language Models
+- grp0063: title_sim=1.0 author_overlap=0.25 abstract_cosine=1.0 | How Important Is Tokenization in French Medical Masked Language Models
+- grp0064: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.965 | Two Counterexamples to Tokenization and the Noiseless Channel
+- grp0066: title_sim=1.0 author_overlap=0.667 abstract_cosine=0.983 | An Analysis of BPE Vocabulary Trimming in Neural Machine Translation
+- grp0067: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.533 | A Comparison of Different Tokenization Methods for the Georgian Langua
+- grp0068: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.541 | OFA: A Framework of Initializing Unseen Subword Embeddings for Efficie
+- grp0069: title_sim=1.0 author_overlap=0.5 abstract_cosine=1.0 | Learning Mutually Informed Representations for Characters and Subwords
+- grp0070: title_sim=1.0 author_overlap=0.68 abstract_cosine=1.0 | Tokenizer Choice For LLM Training: Negligible or Crucial?
+- grp0071: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Unpacking Tokenization: Evaluating Text Compression and its Correlatio
+- grp0074: title_sim=1.0 author_overlap=0.571 abstract_cosine=0.997 | Token Alignment via Character Matching for Subword Completion
+- grp0076: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.999 | Tokenization Falling Short: On Subword Robustness in Large Language Mo
+- grp0076: title_sim=0.464 author_overlap=1.0 abstract_cosine=0.999 | Tokenization Falling Short: On Subword Robustness in Large Language Mo
+- grp0076: title_sim=0.464 author_overlap=1.0 abstract_cosine=0.997 | Tokenization Falling Short: On Subword Robustness in Large Language Mo
+- grp0078: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | An Empirical Study on Cross-lingual Vocabulary Adaptation for Efficien
+- grp0080: title_sim=1.0 author_overlap=0.75 abstract_cosine=1.0 | Tokenization Is More Than Compression
+- grp0082: title_sim=1.0 author_overlap=0.333 abstract_cosine=0.544 | Leading Whitespaces of Language Models’ Subword Vocabulary Pose a Conf
+- grp0086: title_sim=1.0 author_overlap=0.0 abstract_cosine=0.999 | Lexically Grounded Subword Segmentation
+- grp0088: title_sim=1.0 author_overlap=0.5 abstract_cosine=1.0 | Distributional Properties of Subword Regularization
+- grp0089: title_sim=1.0 author_overlap=0.6 abstract_cosine=1.0 | BPE Gets Picky: Efficient Vocabulary Refinement During Tokenizer Train
+- grp0090: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.999 | On the Proper Treatment of Tokenization in Psycholinguistics
+- grp0094: title_sim=1.0 author_overlap=0.5 abstract_cosine=0.569 | SubMerge: Merging Equivalent Subword Tokenizations for Subword Regular
+- grp0098: title_sim=1.0 author_overlap=0.75 abstract_cosine=0.998 | RomanSetu: Efficiently unlocking multilingual capabilities of Large La
+- grp0100: title_sim=1.0 author_overlap=0.5 abstract_cosine=0.999 | Does Manipulating Tokenization Aid Cross-Lingual Transfer? A Study on 
+- grp0101: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Bridging the Gap between Subword and Character Segmentation in Pretrai
+- grp0103: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Exploring the Impact of Training Data Distribution and Subword Tokeniz
+- grp0103: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.522 | Exploring the Impact of Training Data Distribution and Subword Tokeniz
+- grp0103: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.522 | Exploring the Impact of Training Data Distribution and Subword Tokeniz
+- grp0104: title_sim=1.0 author_overlap=0.0 abstract_cosine=1.0 | Reducing tokenizer's tokens per word ratio in Financial domain with T-
+- grp0105: title_sim=1.0 author_overlap=0.333 abstract_cosine=1.0 | A Multi-dimensional Evaluation of Tokenizer-free Multilingual Pretrain
+- grp0106: title_sim=1.0 author_overlap=0.333 abstract_cosine=1.0 | Tokenization with Factorized Subword Encoding
+- grp0108: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.999 | Learn Your Tokens: Word-Pooled Tokenization for Language Modeling
+- grp0109: title_sim=1.0 author_overlap=0.333 abstract_cosine=0.999 | Words, Subwords, and Morphemes: What Really Matters in the Surprisal-R
+- grp0110: title_sim=1.0 author_overlap=0.5 abstract_cosine=1.0 | CompoundPiece: Evaluating and Improving Decompounding Performance of L
+- grp0111: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.996 | Analyzing Cognitive Plausibility of Subword Tokenization
+- grp0113: title_sim=1.0 author_overlap=0.75 abstract_cosine=1.0 | Do All Languages Cost the Same? Tokenization in the Era of Commercial 
+- grp0114: title_sim=1.0 author_overlap=0.333 abstract_cosine=0.999 | XLM-V: Overcoming the Vocabulary Bottleneck in Multilingual Masked Lan
+- grp0116: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.996 | Assessing the Importance of Frequency versus Compositionality for Subw
+- grp0116: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Assessing the Importance of Frequency versus Compositionality for Subw
+- grp0116: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.996 | Assessing the Importance of Frequency versus Compositionality for Subw
+- grp0122: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | ByGPT5: End-to-End Style-conditioned Poetry Generation with Token-free
+- grp0122: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.996 | ByGPT5: End-to-End Style-conditioned Poetry Generation with Token-free
+- grp0122: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.996 | ByGPT5: End-to-End Style-conditioned Poetry Generation with Token-free
+- grp0124: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.995 | CANINE: Pre-training an Efficient Tokenization-Free Encoder for Langua
+- grp0124: title_sim=1.0 author_overlap=0.6 abstract_cosine=1.0 | CANINE: Pre-training an Efficient Tokenization-Free Encoder for Langua
+- grp0124: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.999 | CANINE: Pre-training an Efficient Tokenization-Free Encoder for Langua
+- grp0124: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.994 | CANINE: Pre-training an Efficient Tokenization-Free Encoder for Langua
+- grp0124: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.994 | CANINE: Pre-training an Efficient Tokenization-Free Encoder for Langua
+- grp0124: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.999 | Canine: Pre-training an Efficient Tokenization-Free Encoder for Langua
+- grp0125: title_sim=1.0 author_overlap=0.714 abstract_cosine=1.0 | A Vocabulary-Free Multilingual Neural Tokenizer for End-to-End Task Le
+- grp0128: title_sim=1.0 author_overlap=0.6 abstract_cosine=1.0 | gaBERT --- an Irish Language Model
+- grp0130: title_sim=1.0 author_overlap=0.5 abstract_cosine=1.0 | Single Model Ensemble for Subword Regularized Models in Low-Resource M
+- grp0132: title_sim=1.0 author_overlap=0.0 abstract_cosine=1.0 | MaxMatch-Dropout: Subword Regularization for WordPiece
+- grp0133: title_sim=1.0 author_overlap=0.556 abstract_cosine=1.0 | How Robust is Neural Machine Translation to Language Imbalance in Mult
+- grp0134: title_sim=1.0 author_overlap=0.667 abstract_cosine=0.999 | BERTSeg: BERT Based Unsupervised Subword Segmentation for Neural Machi
+- grp0135: title_sim=1.0 author_overlap=0.5 abstract_cosine=1.0 | Multi-view Subword Regularization
+- grp0135: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Multi-view Subword Regularization
+- grp0135: title_sim=1.0 author_overlap=0.5 abstract_cosine=1.0 | Multi-view Subword Regularization
+- grp0136: title_sim=1.0 author_overlap=0.5 abstract_cosine=1.0 | Char2Subword: Extending the Subword Embedding Space Using Robust Chara
+- grp0138: title_sim=1.0 author_overlap=0.5 abstract_cosine=1.0 | Wine is Not v i n. -- On the Compatibility of Tokenizations Across Lan
+- grp0139: title_sim=0.833 author_overlap=1.0 abstract_cosine=0.964 | Linear-Time WordPiece Tokenization
+- grp0139: title_sim=0.833 author_overlap=0.667 abstract_cosine=0.964 | Linear-Time WordPiece Tokenization
+- grp0139: title_sim=1.0 author_overlap=0.667 abstract_cosine=0.999 | Fast WordPiece Tokenization
+- grp0141: title_sim=1.0 author_overlap=0.667 abstract_cosine=1.0 | How Good is Your Tokenizer? On the Monolingual Performance of Multilin
+- grp0144: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Adversarial Subword Regularization for Robust Neural Machine Translati
+- grp0144: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.993 | Adversarial Subword Regularization for Robust Neural Machine Translati
+- grp0144: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.993 | Adversarial Subword Regularization for Robust Neural Machine Translati
+- grp0145: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Byte Pair Encoding is Suboptimal for Language Model Pretraining
+- grp0146: title_sim=1.0 author_overlap=0.714 abstract_cosine=1.0 | CharacterBERT: Reconciling ELMo and BERT for Word-Level Open-Vocabular
+- grp0146: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.999 | CharacterBERT: Reconciling ELMo and BERT for Word-Level Open-Vocabular
+- grp0146: title_sim=1.0 author_overlap=0.714 abstract_cosine=0.999 | CharacterBERT: Reconciling ELMo and BERT for Word-Level Open-Vocabular
+- grp0147: title_sim=1.0 author_overlap=0.5 abstract_cosine=1.0 | BPE-Dropout: Simple and Effective Subword Regularization
+- grp0147: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | BPE-Dropout: Simple and Effective Subword Regularization
+- grp0147: title_sim=1.0 author_overlap=0.5 abstract_cosine=1.0 | BPE-Dropout: Simple and Effective Subword Regularization
+- grp0149: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.999 | BERT is Not an Interlingua and the Bias of Tokenization
+- grp0151: title_sim=1.0 author_overlap=0.0 abstract_cosine=1.0 | Subword Regularization: Improving Neural Network Translation Models wi
+- grp0152: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Using Semantics for Granularities of Tokenization
+- grp0153: title_sim=1.0 author_overlap=0.333 abstract_cosine=1.0 | SentencePiece: A simple and language independent subword tokenizer and
+- grp0154: title_sim=1.0 author_overlap=0.6 abstract_cosine=1.0 | Enriching Word Vectors with Subword Information
+- grp0155: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Neural Machine Translation of Rare Words with Subword Units
+- grp0155: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.978 | Neural Machine Translation of Rare Words with Subword Units
+- grp0155: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.536 | Neural Machine Translation of Rare Words with Subword Units
+- grp0155: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.978 | Neural Machine Translation of Rare Words with Subword Units
+- grp0155: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.536 | Neural Machine Translation of Rare Words with Subword Units
+- grp0155: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.538 | Neural Machine Translation of Rare Words with Subword Units
+- grp0156: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | One Tokenization per Source
+- grp0157: title_sim=1.0 author_overlap=0.778 abstract_cosine=0.996 | ByT5: Towards a token-free future with pre-trained byte-to-byte models
+- grp0157: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.996 | ByT5: Towards a token-free future with pre-trained byte-to-byte models
+- grp0157: title_sim=1.0 author_overlap=0.778 abstract_cosine=1.0 | ByT5: Towards a Token-Free Future with Pre-trained Byte-to-Byte Models
+- grp0158: title_sim=1.0 author_overlap=0.6 abstract_cosine=1.0 | Language Model Tokenizers Introduce Unfairness Between Languages
+- grp0158: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.996 | Language Model Tokenizers Introduce Unfairness Between Languages
+- grp0158: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.996 | Language Model Tokenizers Introduce Unfairness Between Languages
+- grp0159: title_sim=1.0 author_overlap=1.0 abstract_cosine=1.0 | Tokenization counts: the impact of tokenization on arithmetic in front
+- grp0160: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.963 | How Much is Enough? The Diminishing Returns of Tokenization Training D
+- grp0161: title_sim=0.936 author_overlap=1.0 abstract_cosine=0.998 | AtteSTNet -- An attention and subword tokenization based approach for 
+- grp0162: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.965 | Expanding the Lexicon of Ge'ez Based African Languages: A Comparative 
+- grp0163: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.922 | Subobject-level Image Tokenization
+- grp0164: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.996 | MorphTok: Morphologically Grounded Tokenization for Indian Languages
+- grp0165: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.989 | The Functionalizer: Lossless Functional Decomposition for Subword Toke
+- grp0166: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.925 | Bolmo: Byteifying the Next Generation of Language Models
+
+## Near-miss pairs (NOT merged), for manual spot-check
+
+- title_sim=0.744 author_overlap=1.0
+  - A: Patterns Versus Characters in Subword-Aware Neural Language Modeling (semantic_scholar:471a63eb6e53a60902edaad63fd4e682fdec433f)
+  - B: Reusing Weights in Subword-Aware Neural Language Models (acl_anthology:assylbekov-takhanov-2018-reusing)
+- title_sim=0.725 author_overlap=1.0
+  - A: Subword-Based Tagging for Confidence-Dependent Chinese Word Segmentation (acl_anthology:zhang-etal-2006-subword-based)
+  - B: Subword-based Tagging by Conditional Random Fields for Chinese Word Segmentation (acl_anthology:zhang-etal-2006-subword)
+- title_sim=0.681 author_overlap=1.0
+  - A: Longest Tokenization (acl_anthology:guo-1997-longest)
+  - B: One Tokenization per Source (acl_anthology:guo-1998-one-tokenization)
+- title_sim=0.681 author_overlap=1.0
+  - A: Longest Tokenization (acl_anthology:guo-1997-longest)
+  - B: One Tokenization per Source (acl_anthology:guo-1998-one)
+- title_sim=0.667 author_overlap=0.4
+  - A: MorphBPE: Morphology-Aware Tokenization for Efficient LLM Training (semantic_scholar:b6b6ba84783b6133d03365ceb8d4a22a706dab49)
+  - B: MorphBPE: A Morpho-Aware Tokenizer Bridging Linguistic Complexity for Efficient LLM Training Across Morphologies (semantic_scholar:0a17cab809062aeabf4f6e3710aec88945c98e04)
+- title_sim=0.65 author_overlap=1.0
+  - A: byteSizedLLM@DravidianLangTech 2024: Fake News Detection in Dravidian Languages - Unleashing the Power of Custom Subword Tokenization with Subword2Vec and BiLSTM (acl_anthology:kodali-manukonda-2024-bytesizedllm)
+  - B: byteLLM@LT-EDI-2024: Homophobia/Transphobia Detection in Social Media Comments - Custom Subword Tokenization with Subword2Vec and BiLSTM (acl_anthology:manukonda-kodali-2024-bytellm)
+- title_sim=0.636 author_overlap=0.4
+  - A: Tokenization with Split Trees (semantic_scholar:5fd11179675eeee8a93d9cb814f75f5c6c791ca9)
+  - B: Tokenization Is More Than Compression (semantic_scholar:c74326259a24bbba3e5130f0ee42a546ea31301b)
+- title_sim=0.636 author_overlap=0.4
+  - A: Tokenization with Split Trees (semantic_scholar:5fd11179675eeee8a93d9cb814f75f5c6c791ca9)
+  - B: Tokenization Is More Than Compression (acl_anthology:schmidt-etal-2024-tokenization)
+- title_sim=0.603 author_overlap=0.4
+  - A: Tokenization Falling Short: On Subword Robustness in Large Language Models (arxiv:2406.11687v3)
+  - B: Understanding Subword Compositionality of Large Language Models (acl_anthology:peng-etal-2025-understanding)
+- title_sim=0.603 author_overlap=0.4
+  - A: Tokenization Falling Short: On Subword Robustness in Large Language Models (acl_anthology:chai-etal-2024-tokenization)
+  - B: Understanding Subword Compositionality of Large Language Models (acl_anthology:peng-etal-2025-understanding)
+- title_sim=0.578 author_overlap=1.0
+  - A: MDL-Calibrated Significance-Gain Pair Encoding: Replication-Aware Automatic Stopping for Subword Tokenization (arxiv:2609.31705v1)
+  - B: Significance-Gain Pair Encoding for LLMs: A Statistical Alternative to Frequency-Based Subword Merging (semantic_scholar:80d3e72c339e9553ce6f87fb7ab7e95af113b85f)
+- title_sim=0.576 author_overlap=0.2
+  - A: Analyzing Cognitive Plausibility of Subword Tokenization (arxiv:2310.13348v1)
+  - B: Splintering Nonconcatenative Languages for Better Tokenization (arxiv:2503.14433v2)
+- title_sim=0.576 author_overlap=0.25
+  - A: Analyzing Cognitive Plausibility of Subword Tokenization (arxiv:2310.13348v1)
+  - B: Splintering Nonconcatenative Languages for Better Tokenization (acl_anthology:gazit-etal-2025-splintering)
+- title_sim=0.576 author_overlap=0.2
+  - A: Analyzing Cognitive Plausibility of Subword Tokenization (acl_anthology:beinborn-pinter-2023-analyzing)
+  - B: Splintering Nonconcatenative Languages for Better Tokenization (arxiv:2503.14433v2)
+- title_sim=0.576 author_overlap=0.25
+  - A: Analyzing Cognitive Plausibility of Subword Tokenization (acl_anthology:beinborn-pinter-2023-analyzing)
+  - B: Splintering Nonconcatenative Languages for Better Tokenization (acl_anthology:gazit-etal-2025-splintering)
+- title_sim=0.561 author_overlap=0.333
+  - A: Analysis of Subword Tokenization Approaches for Turkish Language (semantic_scholar:9addef681bc1576d7d9b0104d71c41b9def546c5)
+  - B: Analysis of Deep Learning Model Combinations and Tokenization Approaches in Sentiment Classification (semantic_scholar:e665ca3fd93de42bc9231dac3cee35108913dde5)
+- title_sim=0.554 author_overlap=0.333
+  - A: Where is the signal in tokenization space? (acl_anthology:geh-etal-2024-signal)
+  - B: Adversarial Tokenization (acl_anthology:geh-etal-2025-adversarial)
+- title_sim=0.552 author_overlap=0.333
+  - A: Length-MAX Tokenizer for Language Models (semantic_scholar:6536e9f9fc4c0393d8b09d2381a80ca92f3242d1)
+  - B: SemToken: Semantic-Aware Tokenization for Efficient Long-Context Language Models (acl_anthology:liu-yu-2026-semtoken)
+- title_sim=0.55 author_overlap=0.667
+  - A: Specialized Monolingual BPE Tokenizers for Uralic Languages Representation in Large Language Models (acl_anthology:chelombitko-komissarov-2024-specialized)
+  - B: Qtok: A Comprehensive Framework for Evaluating Multilingual Tokenizer Quality in Large Language Models (semantic_scholar:ef49a5fcb69dbb29c93593320b8dde44fc9741ac)
+- title_sim=0.548 author_overlap=0.25
+  - A: FLEXITOKENS: Flexible Tokenization for Evolving Language Models (acl_anthology:owodunni-etal-2026-flexitokens)
+  - B: Do All Languages Cost the Same? Tokenization in the Era of Commercial Language Models (semantic_scholar:17fbffb05fa14e21d1c506fd5f0f568b955fe983)
+- title_sim=0.548 author_overlap=0.25
+  - A: FLEXITOKENS: Flexible Tokenization for Evolving Language Models (acl_anthology:owodunni-etal-2026-flexitokens)
+  - B: Do All Languages Cost the Same? Tokenization in the Era of Commercial Language Models (acl_anthology:ahia-etal-2023-languages)
+- title_sim=0.548 author_overlap=0.25
+  - A: Bilingual Subword Segmentation for Neural Machine Translation (acl_anthology:deguchi-etal-2020-bilingual)
+  - B: Probabilistic Bilingual Subword Segmentation with Latent Subword Alignment (acl_anthology:nishida-etal-2026-probabilistic)
+- title_sim=0.539 author_overlap=0.375
+  - A: SubMerge: Merging Equivalent Subword Tokenizations for Subword Regularized Models in Neural Machine Translation (acl_anthology:song-etal-2024-submerge)
+  - B: BERTSeg: BERT Based Unsupervised Subword Segmentation for Neural Machine Translation (semantic_scholar:82004b8e8488d2ebb413427ef4221b7e0d6e9f1e)
+- title_sim=0.539 author_overlap=0.571
+  - A: SubMerge: Merging Equivalent Subword Tokenizations for Subword Regularized Models in Neural Machine Translation (acl_anthology:song-etal-2024-submerge)
+  - B: BERTSeg: BERT Based Unsupervised Subword Segmentation for Neural Machine Translation (acl_anthology:song-etal-2022-bertseg)
+- title_sim=0.539 author_overlap=0.571
+  - A: SubMerge: Merging Equivalent Subword Tokenizations for Subword Regularized Models in Neural Machine Translation (semantic_scholar:cdcd63e787819485988c6dd8bb9cb7180a5248c2)
+  - B: BERTSeg: BERT Based Unsupervised Subword Segmentation for Neural Machine Translation (semantic_scholar:82004b8e8488d2ebb413427ef4221b7e0d6e9f1e)
+- title_sim=0.539 author_overlap=0.375
+  - A: SubMerge: Merging Equivalent Subword Tokenizations for Subword Regularized Models in Neural Machine Translation (semantic_scholar:cdcd63e787819485988c6dd8bb9cb7180a5248c2)
+  - B: BERTSeg: BERT Based Unsupervised Subword Segmentation for Neural Machine Translation (acl_anthology:song-etal-2022-bertseg)
+- title_sim=0.537 author_overlap=0.429
+  - A: How Good is Your Tokenizer? On the Monolingual Performance of Multilingual Language Models (semantic_scholar:0d4b5c9a071557f4eb12f63f785dbc89071d4272)
+  - B: Romanization-based Large-scale Adaptation of Multilingual Language Models (acl_anthology:purkayastha-etal-2023-romanization)
+- title_sim=0.537 author_overlap=0.667
+  - A: How Good is Your Tokenizer? On the Monolingual Performance of Multilingual Language Models (acl_anthology:rust-etal-2021-good)
+  - B: Romanization-based Large-scale Adaptation of Multilingual Language Models (acl_anthology:purkayastha-etal-2023-romanization)
+- title_sim=0.537 author_overlap=1.0
+  - A: Critical Tokenization and its Properties (acl_anthology:guo-1997-critical)
+  - B: One Tokenization per Source (acl_anthology:guo-1998-one-tokenization)
+- title_sim=0.537 author_overlap=1.0
+  - A: Critical Tokenization and its Properties (acl_anthology:guo-1997-critical)
+  - B: One Tokenization per Source (acl_anthology:guo-1998-one)
+- title_sim=0.533 author_overlap=0.214
+  - A: A Formal Perspective on Byte-Pair Encoding (acl_anthology:zouhar-etal-2023-formal)
+  - B: Language Models over Canonical Byte-Pair Encodings (semantic_scholar:bd0c7745f4115d55598faddf1c0f46469b4c1e38)
+- title_sim=0.525 author_overlap=0.2
+  - A: CharBench: Evaluating the Role of Tokenization in Character-Level Tasks (semantic_scholar:5ac356f05da025fa27b43d5df4ab88d7f59452c4)
+  - B: How Much is Enough? The Diminishing Returns of Tokenization Training Data (arxiv:2502.20273v1)
+- title_sim=0.525 author_overlap=0.333
+  - A: SemToken: Semantic-Aware Tokenization for Efficient Long-Context Language Modeling (semantic_scholar:5324543701de3988b0855ada9e59c8ac0939edbd)
+  - B: Length-MAX Tokenizer for Language Models (semantic_scholar:6536e9f9fc4c0393d8b09d2381a80ca92f3242d1)
+- title_sim=0.522 author_overlap=0.25
+  - A: Improving Bengali and Hindi Large Language Models (acl_anthology:shahriar-barbosa-2024-improving)
+  - B: Towards Analysis and Interpretation of Large Language Models for Arithmetic Reasoning (semantic_scholar:881b763caaa228f0725ae1cd93e0ebd5d137a1d0)
+- title_sim=0.518 author_overlap=0.5
+  - A: Jamo-Level Subword Tokenization in Low-Resource Korean Machine Translation (acl_anthology:lee-etal-2025-jamo)
+  - B: Tokenization as Finite-State Transduction (semantic_scholar:68d004d1278158bf9e840bfa342983c07919803c)
+- title_sim=0.518 author_overlap=0.5
+  - A: Jamo-Level Subword Tokenization in Low-Resource Korean Machine Translation (acl_anthology:lee-etal-2025-jamo)
+  - B: Tokenization as Finite-State Transduction (acl_anthology:cognetta-okazaki-2025-tokenization)
+- title_sim=0.514 author_overlap=1.0
+  - A: Rethinking Polarity Detection: When BPE Fails Across Scripts (acl_anthology:k-h-de-nardi-2026-rethinking)
+  - B: When Multilingual Evaluation Assumptions Fail: Tokenization Effects Across Scripts (acl_anthology:h-de-nardi-2026-multilingual)
+- title_sim=0.511 author_overlap=0.2
+  - A: How Much is Enough? The Diminishing Returns of Tokenization Training Data (arxiv:2502.20273v4)
+  - B: CharBench: Evaluating the Role of Tokenization in Character-Level Tasks (semantic_scholar:5ac356f05da025fa27b43d5df4ab88d7f59452c4)
+- title_sim=0.509 author_overlap=1.0
+  - A: NE-BERT: A Multilingual Language Model for Nine Northeast Indian Languages (semantic_scholar:49505c641cd4d957d0531e062ba44701a2c0ac4c)
+  - B: Beyond Multilinguality: Typological Limitations in Multilingual Models for Meitei Language (acl_anthology:nyalang-2026-beyond)
+- title_sim=0.509 author_overlap=1.0
+  - A: NE-BERT: A Multilingual Language Model for Nine Northeast Indian Languages (acl_anthology:nyalang-2026-ne)
+  - B: Beyond Multilinguality: Typological Limitations in Multilingual Models for Meitei Language (acl_anthology:nyalang-2026-beyond)
+- title_sim=0.509 author_overlap=0.4
+  - A: Languages Through the Looking Glass of BPE Compression (acl_anthology:gutierrez-vasques-etal-2023-languages)
+  - B: From characters to words: the turning point of BPE merges (acl_anthology:gutierrez-vasques-etal-2021-characters)
+- title_sim=0.506 author_overlap=0.25
+  - A: LAST: Language Model Aware Speech Tokenization (semantic_scholar:b6272e96c7e6228b0ecbf4d7f0aeb3f4bc789376)
+  - B: PAST: Phonetic-Acoustic Speech Tokenizer (semantic_scholar:c324f9a9e3d45ffffd614f9e1ea82a63483bfadb)
+- title_sim=0.504 author_overlap=0.2
+  - A: Greed is All You Need: An Evaluation of Tokenizer Inference Methods (acl_anthology:uzan-etal-2024-greed)
+  - B: CharBench: Evaluating the Role of Tokenization in Character-Level Tasks (semantic_scholar:5ac356f05da025fa27b43d5df4ab88d7f59452c4)
+- title_sim=0.504 author_overlap=1.0
+  - A: The Learning Dynamics of Subword Segmentation for Morphologically Diverse Languages (acl_anthology:meyer-buys-2025-learning)
+  - B: Subword Segmental Language Modelling for Nguni Languages (acl_anthology:meyer-buys-2022-subword)
+- title_sim=0.503 author_overlap=0.333
+  - A: Single Model Ensemble for Subword Regularized Models in Low-Resource Machine Translation (arxiv:2203.13528v1)
+  - B: An Analysis of BPE Vocabulary Trimming in Neural Machine Translation (arxiv:2404.00397v1)
+- title_sim=0.503 author_overlap=0.333
+  - A: Single Model Ensemble for Subword Regularized Models in Low-Resource Machine Translation (acl_anthology:takase-etal-2022-single)
+  - B: An Analysis of BPE Vocabulary Trimming in Neural Machine Translation (acl_anthology:cognetta-etal-2024-analysis)
+- title_sim=0.5 author_overlap=0.286
+  - A: Jamo-Level Subword Tokenization in Low-Resource Korean Machine Translation (acl_anthology:lee-etal-2025-jamo)
+  - B: An Analysis of BPE Vocabulary Trimming in Neural Machine Translation (arxiv:2404.00397v1)
+- title_sim=0.5 author_overlap=0.286
+  - A: Jamo-Level Subword Tokenization in Low-Resource Korean Machine Translation (acl_anthology:lee-etal-2025-jamo)
+  - B: An Analysis of BPE Vocabulary Trimming in Neural Machine Translation (acl_anthology:cognetta-etal-2024-analysis)
+- title_sim=0.5 author_overlap=0.2
+  - A: Date Fragments: A Hidden Bottleneck of Tokenization for Temporal Reasoning (semantic_scholar:17b26908fecacae85cc3b9352940d47d1e234dec)
+  - B: Image and Video Tokenization with Binary Spherical Quantization (semantic_scholar:5ed6946560f64173f2bcb762e1a6d6fcfa5103d4)
+- title_sim=0.5 author_overlap=0.2
+  - A: Date Fragments: A Hidden Bottleneck of Tokenization for Temporal Reasoning (acl_anthology:bhatia-etal-2025-date)
+  - B: Image and Video Tokenization with Binary Spherical Quantization (semantic_scholar:5ed6946560f64173f2bcb762e1a6d6fcfa5103d4)
+- title_sim=0.492 author_overlap=0.286
+  - A: Image and Video Tokenization with Binary Spherical Quantization (semantic_scholar:5ed6946560f64173f2bcb762e1a6d6fcfa5103d4)
+  - B: Spherical Leech Quantization for Visual Tokenization and Generation (semantic_scholar:e0cee3927824a33bbcfd96320f8558d980fc7f06)
+- title_sim=0.49 author_overlap=1.0
+  - A: Adaptive BPE Tokenization for Enhanced Vocabulary Adaptation in Finetuning Pretrained Language Models (acl_anthology:balde-etal-2024-adaptive)
+  - B: Evaluation of LLMs in Medical Text Summarization: The Role of Vocabulary Adaptation in High OOV Settings (acl_anthology:balde-etal-2025-evaluation)
+- title_sim=0.488 author_overlap=0.333
+  - A: How Good is Your Tokenizer? On the Monolingual Performance of Multilingual Language Models (acl_anthology:rust-etal-2021-good)
+  - B: CompoundPiece: Evaluating and Improving Decompounding Performance of Language Models (acl_anthology:minixhofer-etal-2023-compoundpiece)
+- title_sim=0.485 author_overlap=0.2
+  - A: WECHSEL: Effective initialization of subword embeddings for cross-lingual transfer of monolingual language models (acl_anthology:minixhofer-etal-2022-wechsel)
+  - B: CompoundPiece: Evaluating and Improving Decompounding Performance of Language Models (arxiv:2305.14214v2)
+- title_sim=0.485 author_overlap=0.2
+  - A: WECHSEL: Effective initialization of subword embeddings for cross-lingual transfer of monolingual language models (acl_anthology:minixhofer-etal-2022-wechsel)
+  - B: CompoundPiece: Evaluating and Improving Decompounding Performance of Language Models (acl_anthology:minixhofer-etal-2023-compoundpiece)
+- title_sim=0.484 author_overlap=0.5
+  - A: Multilingual Tokenization through the Lens of Indian Languages: Challenges and Insights (acl_anthology:brahma-etal-2026-multilingual)
+  - B: MorphTok: Morphologically Grounded Tokenization for Indian Languages (arxiv:2504.10335v2)
+- title_sim=0.484 author_overlap=0.5
+  - A: Multilingual Tokenization through the Lens of Indian Languages: Challenges and Insights (acl_anthology:brahma-etal-2026-multilingual)
+  - B: MorphTok: Morphologically Grounded Tokenization for Indian Languages (arxiv:2504.10335v1)
+- title_sim=0.475 author_overlap=0.2
+  - A: Which Pieces Does Unigram Tokenization Really Need? (acl_anthology:land-pinter-2026-pieces)
+  - B: How Much is Enough? The Diminishing Returns of Tokenization Training Data (arxiv:2502.20273v4)
+- title_sim=0.475 author_overlap=0.2
+  - A: Which Pieces Does Unigram Tokenization Really Need? (acl_anthology:land-pinter-2026-pieces)
+  - B: How Much is Enough? The Diminishing Returns of Tokenization Training Data (arxiv:2502.20273v1)
+- title_sim=0.475 author_overlap=0.5
+  - A: A Systematic Study of Leveraging Subword Information for Learning Word Representations (acl_anthology:zhu-etal-2019-systematic)
+  - B: On the Importance of Subword Information for Morphological Tasks in Truly Low-Resource Languages (acl_anthology:zhu-etal-2019-importance)
+- title_sim=0.474 author_overlap=0.4
+  - A: Generalizing Word Embeddings using Bag of Subwords (acl_anthology:zhao-etal-2018-generalizing)
+  - B: PBoS: Probabilistic Bag-of-Subwords for Generalizing Word Embedding (acl_anthology:jinman-etal-2020-pbos)
+- title_sim=0.473 author_overlap=0.667
+  - A: SuperBPE: Space Travel for Language Models (semantic_scholar:326c554455fdf0d6fb9636c87341d1c7748cd834)
+  - B: Sampling from Your Language Model One Byte at a Time (semantic_scholar:06d03e6fabcab2edd76ca415de26a9925afd0086)
+- title_sim=0.47 author_overlap=0.429
+  - A: Broken Tokens? Your Language Model can Secretly Handle Non-Canonical Tokenizations (semantic_scholar:5bec2a6df12e4cc6034490e400abecfc7ae090fb)
+  - B: Sampling from Your Language Model One Byte at a Time (semantic_scholar:06d03e6fabcab2edd76ca415de26a9925afd0086)
+- title_sim=0.467 author_overlap=1.0
+  - A: Critical Tokenization and its Properties (acl_anthology:guo-1997-critical)
+  - B: Longest Tokenization (acl_anthology:guo-1997-longest)
+- title_sim=0.466 author_overlap=1.0
+  - A: Subword Segmental Language Modelling for Nguni Languages (acl_anthology:meyer-buys-2022-subword)
+  - B: Subword Segmental Machine Translation: Unifying Segmentation and Target Sentence Generation (acl_anthology:meyer-buys-2023-subword)
+- title_sim=0.466 author_overlap=1.0
+  - A: VOCABULARY SIZE IS ASSOCIATED WITH SECOND-LANGUAGE VOWEL PERCEPTION PERFORMANCE IN ADULT LEARNERS (semantic_scholar:6c4cba6b1c23c3c57ef9aee602b15646ceb6565c)
+  - B: Vocabulary size matters: The assimilation of second-language Australian English vowels to first-language Japanese vowel categories (semantic_scholar:fc906b53c318a3a6b84c7fa6c072ccd8c9d9b166)
+- title_sim=0.464 author_overlap=0.667
+  - A: Tokenization Falling Short: On Subword Robustness in Large Language Models (arxiv:2406.11687v3)
+  - B: Tokenization Falling Short: hTe Cusre of Tkoeniaztion (semantic_scholar:b81281c0a5d340e908a7e348b0a0521c069131f2)
+- title_sim=0.464 author_overlap=0.667
+  - A: Tokenization Falling Short: On Subword Robustness in Large Language Models (acl_anthology:chai-etal-2024-tokenization)
+  - B: Tokenization Falling Short: hTe Cusre of Tkoeniaztion (semantic_scholar:b81281c0a5d340e908a7e348b0a0521c069131f2)
+- title_sim=0.463 author_overlap=0.4
+  - A: BPE Gets Picky: Efficient Vocabulary Refinement During Tokenizer Training (semantic_scholar:08df6e6286b22907601292a106c71ec1a602eb5e)
+  - B: From Where Words Come: Efficient Regularization of Code Tokenizers Through Source Attribution (acl_anthology:chizhov-etal-2026-words)
+- title_sim=0.463 author_overlap=0.4
+  - A: BPE Gets Picky: Efficient Vocabulary Refinement During Tokenizer Training (acl_anthology:chizhov-etal-2024-bpe)
+  - B: From Where Words Come: Efficient Regularization of Code Tokenizers Through Source Attribution (acl_anthology:chizhov-etal-2026-words)
+- title_sim=0.462 author_overlap=0.25
+  - A: Incorporating Context into Subword Vocabularies (acl_anthology:yehezkel-pinter-2023-incorporating)
+  - B: Mimicking Word Embeddings using Subword RNNs (acl_anthology:pinter-etal-2017-mimicking)
+- title_sim=0.455 author_overlap=0.333
+  - A: CompoundPiece: Evaluating and Improving Decompounding Performance of Language Models (acl_anthology:minixhofer-etal-2023-compoundpiece)
+  - B: Romanization-based Large-scale Adaptation of Multilingual Language Models (acl_anthology:purkayastha-etal-2023-romanization)
+- title_sim=0.451 author_overlap=0.6
+  - A: Jamo-Level Subword Tokenization in Low-Resource Korean Machine Translation (acl_anthology:lee-etal-2025-jamo)
+  - B: Two Counterexamples to Tokenization and the Noiseless Channel (semantic_scholar:5a84ad5bd5c488651d7915d7fb1215d17df70c66)
+- title_sim=0.451 author_overlap=0.6
+  - A: Jamo-Level Subword Tokenization in Low-Resource Korean Machine Translation (acl_anthology:lee-etal-2025-jamo)
+  - B: Two Counterexamples to Tokenization and the Noiseless Channel (acl_anthology:cognetta-etal-2024-two)
+- title_sim=0.449 author_overlap=0.8
+  - A: Entropy-guided Vocabulary Augmentation of Multilingual Language Models for Low-resource Tasks (acl_anthology:nag-etal-2023-entropy)
+  - B: Efficient Continual Pre-training of LLMs for Low-resource Languages (acl_anthology:nag-etal-2025-efficient)
+- title_sim=0.448 author_overlap=0.333
+  - A: Analyzing Cognitive Plausibility of Subword Tokenization (arxiv:2310.13348v1)
+  - B: CharBench: Evaluating the Role of Tokenization in Character-Level Tasks (semantic_scholar:5ac356f05da025fa27b43d5df4ab88d7f59452c4)
+- title_sim=0.448 author_overlap=0.333
+  - A: Analyzing Cognitive Plausibility of Subword Tokenization (acl_anthology:beinborn-pinter-2023-analyzing)
+  - B: CharBench: Evaluating the Role of Tokenization in Character-Level Tasks (semantic_scholar:5ac356f05da025fa27b43d5df4ab88d7f59452c4)
+- title_sim=0.447 author_overlap=0.333
+  - A: Data and Model Centric Approaches for Expansion of Large Language Models to New languages (acl_anthology:kunchukuttan-etal-2025-data)
+  - B: RomanSetu: Efficiently unlocking multilingual capabilities of Large Language Models via Romanization (semantic_scholar:ed2da4a2c64c4ffdfe4fa38176b61d688a2b0d21)
+- title_sim=0.447 author_overlap=0.333
+  - A: Data and Model Centric Approaches for Expansion of Large Language Models to New languages (acl_anthology:kunchukuttan-etal-2025-data)
+  - B: RomanSetu: Efficiently unlocking multilingual capabilities of Large Language Models via Romanization (acl_anthology:husain-etal-2024-romansetu)
+- title_sim=0.447 author_overlap=0.25
+  - A: Extending the Subwording Model of Multilingual Pretrained Models for New Languages (arxiv:2211.15965v1)
+  - B: Subword-based Tagging by Conditional Random Fields for Chinese Word Segmentation (acl_anthology:zhang-etal-2006-subword)
+- title_sim=0.441 author_overlap=0.222
+  - A: Joint Optimization for Greedy Longest-match Tokenization (semantic_scholar:eb528d96996a889f18547a2b979372fa0f25e2f2)
+  - B: How Much is Enough? The Diminishing Returns of Tokenization Training Data (arxiv:2502.20273v1)
+- title_sim=0.44 author_overlap=0.286
+  - A: Evaluating Subword Tokenization: Alien Subword Composition and OOV Generalization Challenge (arxiv:2404.13292v1)
+  - B: CharBench: Evaluating the Role of Tokenization in Character-Level Tasks (semantic_scholar:5ac356f05da025fa27b43d5df4ab88d7f59452c4)
+- title_sim=0.437 author_overlap=0.333
+  - A: Which Pieces Does Unigram Tokenization Really Need? (acl_anthology:land-pinter-2026-pieces)
+  - B: CharBench: Evaluating the Role of Tokenization in Character-Level Tasks (semantic_scholar:5ac356f05da025fa27b43d5df4ab88d7f59452c4)
+- title_sim=0.431 author_overlap=0.2
+  - A: Wine is Not v i n. -- On the Compatibility of Tokenizations Across Languages (arxiv:2109.05772v1)
+  - B: Does Manipulating Tokenization Aid Cross-Lingual Transfer? A Study on POS Tagging for Non-Standardized Languages (semantic_scholar:e0d09d91784a6d426ffcd2fd12448dd9c8ceefe9)
+- title_sim=0.431 author_overlap=0.2
+  - A: Wine is not v i n. On the Compatibility of Tokenizations across Languages (acl_anthology:maronikolakis-etal-2021-wine-v)
+  - B: Does Manipulating Tokenization Aid Cross-Lingual Transfer? A Study on POS Tagging for Non-Standardized Languages (acl_anthology:blaschke-etal-2023-manipulating)
+- title_sim=0.43 author_overlap=0.75
+  - A: Learning to Generate Word Representations using Subword Information (acl_anthology:kim-etal-2018-learning)
+  - B: Representation Learning for Unseen Words by Bridging Subwords to Semantic Networks (acl_anthology:kim-etal-2020-representation)
+- title_sim=0.427 author_overlap=0.333
+  - A: Analyzing Cognitive Plausibility of Subword Tokenization (arxiv:2310.13348v1)
+  - B: Incorporating Context into Subword Vocabularies (acl_anthology:yehezkel-pinter-2023-incorporating)
+- title_sim=0.427 author_overlap=0.333
+  - A: Analyzing Cognitive Plausibility of Subword Tokenization (acl_anthology:beinborn-pinter-2023-analyzing)
+  - B: Incorporating Context into Subword Vocabularies (acl_anthology:yehezkel-pinter-2023-incorporating)
+- title_sim=0.426 author_overlap=0.4
+  - A: Tokenization as Finite-State Transduction (semantic_scholar:68d004d1278158bf9e840bfa342983c07919803c)
+  - B: An Analysis of BPE Vocabulary Trimming in Neural Machine Translation (arxiv:2404.00397v1)
+- title_sim=0.426 author_overlap=0.4
+  - A: Tokenization as Finite-State Transduction (semantic_scholar:68d004d1278158bf9e840bfa342983c07919803c)
+  - B: An Analysis of BPE Vocabulary Trimming in Neural Machine Translation (acl_anthology:cognetta-etal-2024-analysis)
+- title_sim=0.426 author_overlap=0.4
+  - A: Tokenization as Finite-State Transduction (acl_anthology:cognetta-okazaki-2025-tokenization)
+  - B: An Analysis of BPE Vocabulary Trimming in Neural Machine Translation (arxiv:2404.00397v1)
+- title_sim=0.426 author_overlap=0.4
+  - A: Tokenization as Finite-State Transduction (acl_anthology:cognetta-okazaki-2025-tokenization)
+  - B: An Analysis of BPE Vocabulary Trimming in Neural Machine Translation (acl_anthology:cognetta-etal-2024-analysis)
+- title_sim=0.426 author_overlap=0.333
+  - A: Large Vocabulary Size Improves Large Language Models (semantic_scholar:58414e6852ca0fde41c132db55ac30f767a98e25)
+  - B: Bridging the Gap between Subword and Character Segmentation in Pretrained Language Models (semantic_scholar:2b4369d50ac7310b9908a2baef89a63c68cbd893)
+- title_sim=0.426 author_overlap=0.333
+  - A: Large Vocabulary Size Improves Large Language Models (semantic_scholar:58414e6852ca0fde41c132db55ac30f767a98e25)
+  - B: Bridging the Gap between Subword and Character Segmentation in Pretrained Language Models (acl_anthology:kiyono-etal-2023-bridging)
+- title_sim=0.426 author_overlap=0.333
+  - A: Large Vocabulary Size Improves Large Language Models (acl_anthology:takase-etal-2025-large)
+  - B: Bridging the Gap between Subword and Character Segmentation in Pretrained Language Models (semantic_scholar:2b4369d50ac7310b9908a2baef89a63c68cbd893)
+- title_sim=0.426 author_overlap=0.333
+  - A: Large Vocabulary Size Improves Large Language Models (acl_anthology:takase-etal-2025-large)
+  - B: Bridging the Gap between Subword and Character Segmentation in Pretrained Language Models (acl_anthology:kiyono-etal-2023-bridging)
+- title_sim=0.424 author_overlap=1.0
+  - A: The Effect of Model Capacity and Script Diversity on Subword Tokenization for Sorani Kurdish (acl_anthology:salehi-jacobs-2024-effect)
+  - B: Subword Tokenization Strategies for Kurdish Word Embeddings (arxiv:2511.14696v1)
+- title_sim=0.42 author_overlap=0.25
+  - A: Analyzing Cognitive Plausibility of Subword Tokenization (arxiv:2310.13348v1)
+  - B: Mimicking Word Embeddings using Subword RNNs (acl_anthology:pinter-etal-2017-mimicking)
+- title_sim=0.42 author_overlap=0.25
+  - A: Analyzing Cognitive Plausibility of Subword Tokenization (acl_anthology:beinborn-pinter-2023-analyzing)
+  - B: Mimicking Word Embeddings using Subword RNNs (acl_anthology:pinter-etal-2017-mimicking)
+- title_sim=0.42 author_overlap=0.231
+  - A: MAGNET: Improving the Multilingual Fairness of Language Models with Adaptive Gradient-Based Tokenization (semantic_scholar:9ef2d0327c73393adb509d5793f707447cad2faf)
+  - B: Bolmo: Byteifying the Next Generation of Language Models (arxiv:2512.15586v2)
+- title_sim=0.42 author_overlap=0.231
+  - A: MAGNET: Improving the Multilingual Fairness of Language Models with Adaptive Gradient-Based Tokenization (semantic_scholar:9ef2d0327c73393adb509d5793f707447cad2faf)
+  - B: Bolmo: Byteifying the Next Generation of Language Models (arxiv:2512.15586v1)
+- title_sim=0.415 author_overlap=0.25
+  - A: MaxMatch-Dropout: Subword Regularization for WordPiece (semantic_scholar:8c82d3d758897ef9f166924683831ecf6085f21a)
+  - B: SubRegWeigh: Effective and Efficient Annotation Weighing with Subword Regularization (arxiv:2409.06216v2)
+- title_sim=0.415 author_overlap=0.25
+  - A: MaxMatch-Dropout: Subword Regularization for WordPiece (semantic_scholar:8c82d3d758897ef9f166924683831ecf6085f21a)
+  - B: SubRegWeigh: Effective and Efficient Annotation Weighing with Subword Regularization (arxiv:2409.06216v1)
+- title_sim=0.415 author_overlap=0.25
+  - A: MaxMatch-Dropout: Subword Regularization for WordPiece (acl_anthology:hiraoka-2022-maxmatch)
+  - B: SubRegWeigh: Effective and Efficient Annotation Weighing with Subword Regularization (acl_anthology:tsuji-etal-2025-subregweigh)
+- title_sim=0.415 author_overlap=0.333
+  - A: BPEmb: Tokenization-free Pre-trained Subword Embeddings in 275 Languages (acl_anthology:heinzerling-strube-2018-bpemb)
+  - B: On the Importance of Subword Information for Morphological Tasks in Truly Low-Resource Languages (acl_anthology:zhu-etal-2019-importance)
+- title_sim=0.414 author_overlap=0.25
+  - A: Analyzing Cognitive Plausibility of Subword Tokenization (arxiv:2310.13348v1)
+  - B: TamilTok: Morphologically-Informed Tokenization for Tamil (acl_anthology:muthukumar-etal-2026-tamiltok)
+- title_sim=0.414 author_overlap=0.25
+  - A: Analyzing Cognitive Plausibility of Subword Tokenization (acl_anthology:beinborn-pinter-2023-analyzing)
+  - B: TamilTok: Morphologically-Informed Tokenization for Tamil (acl_anthology:muthukumar-etal-2026-tamiltok)
+- title_sim=0.413 author_overlap=0.25
+  - A: Subword Segmentation and a Single Bridge Language Affect Zero-Shot Neural Machine Translation (acl_anthology:rios-etal-2020-subword)
+  - B: How Suitable Are Subword Segmentation Strategies for Translating Non-Concatenative Morphology? (acl_anthology:amrhein-sennrich-2021-suitable-subword)
+- title_sim=0.413 author_overlap=0.25
+  - A: Mind the Gap: A Closer Look at Tokenization for Multiple-Choice Question Answering with LLMs (acl_anthology:sanz-guerrero-etal-2025-mind)
+  - B: The Effectiveness of Uncased Tokeniziaion for Clinical Notes (acl_anthology:paik-wense-2025-effectiveness)
+- title_sim=0.412 author_overlap=1.0
+  - A: MoVoC: Morphology-Aware Subword Construction for Ge'ez Script Languages (acl_anthology:teklehaymanot-etal-2025-movoc)
+  - B: LGSE: Lexically Grounded Subword Embedding Initialization for Low-Resource Language Adaptation (acl_anthology:teklehaymanot-etal-2026-lgse)
+- title_sim=0.412 author_overlap=1.0
+  - A: MoVoC: Morphology-Aware Subword Construction for Geez Script Languages (semantic_scholar:9bd6cd6fdc95345e2c7f44a21338faceaa0d8e31)
+  - B: LGSE: Lexically Grounded Subword Embedding Initialization for Low-Resource Language Adaptation (acl_anthology:teklehaymanot-etal-2026-lgse)
+- title_sim=0.412 author_overlap=0.5
+  - A: MoVoC: Morphology-Aware Subword Construction for Ge'ez Script Languages (acl_anthology:teklehaymanot-etal-2025-movoc)
+  - B: LGSE: Lexically Grounded Subword Embedding Initialization for Low-Resource Language Adaptation (semantic_scholar:d125e7680ef9da46c9fdcabf05ebc488e13d827a)
+- title_sim=0.412 author_overlap=0.5
+  - A: MoVoC: Morphology-Aware Subword Construction for Geez Script Languages (semantic_scholar:9bd6cd6fdc95345e2c7f44a21338faceaa0d8e31)
+  - B: LGSE: Lexically Grounded Subword Embedding Initialization for Low-Resource Language Adaptation (semantic_scholar:d125e7680ef9da46c9fdcabf05ebc488e13d827a)
+- title_sim=0.407 author_overlap=0.333
+  - A: Investigating the Effectiveness of BPE: The Power of Shorter Sequences (acl_anthology:galle-2019-investigating)
+  - B: Tokenization Repair in the Presence of Spelling Errors (acl_anthology:bast-etal-2021-tokenization)
+- title_sim=0.402 author_overlap=1.0
+  - A: BPEmb: Tokenization-free Pre-trained Subword Embeddings in 275 Languages (acl_anthology:heinzerling-strube-2018-bpemb)
+  - B: Sequence Tagging with Contextual and Non-Contextual Subword Representations: A Multilingual Evaluation (acl_anthology:heinzerling-strube-2019-sequence)
