@@ -2,16 +2,53 @@
   "n_questions_evaluated": 36,
   "abstention": {
     "tp": 7,
-    "fp": 10,
+    "fp": 6,
     "fn": 0,
-    "tn": 19,
-    "precision": 0.4117647058823529,
+    "tn": 23,
+    "precision": 0.5384615384615384,
     "recall": 1.0
   },
-  "groundedness_rate": 0.8947368421052632,
-  "n_groundedness_judged": 19,
-  "citation_rate": 0.8421052631578947,
-  "n_citation_checked": 19,
-  "followup_mean_recall_system": 0.14285714285714285,
+  "groundedness_rate": 0.8695652173913043,
+  "n_groundedness_judged": 23,
+  "citation_rate": 0.9130434782608695,
+  "n_citation_checked": 23,
+  "followup_system_vs_gold_rewrite": [
+    [
+      "q25",
+      0.0,
+      1.0
+    ],
+    [
+      "q26",
+      0.0,
+      0.0
+    ],
+    [
+      "q27",
+      0.0,
+      0.0
+    ],
+    [
+      "q28",
+      1.0,
+      1.0
+    ],
+    [
+      "q29",
+      1.0,
+      0.0
+    ],
+    [
+      "q30",
+      1.0,
+      0.0
+    ],
+    [
+      "q31",
+      0.0,
+      0.0
+    ]
+  ],
+  "followup_mean_recall_system": 0.42857142857142855,
   "followup_mean_recall_gold": 0.2857142857142857
 }

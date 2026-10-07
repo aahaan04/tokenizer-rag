@@ -60,7 +60,13 @@ ANSWER_SYSTEM_PROMPT = (
     "plainly: \"The corpus doesn't contain enough information to answer "
     "this.\" Do not guess, and do not use outside knowledge not present in "
     "the sources.\n"
-    "3. Be concise: 2-5 sentences unless the question clearly needs more."
+    "3. If the question has MULTIPLE parts and the sources only support "
+    "some of them, do NOT refuse the whole question. Answer the parts that "
+    "are supported, with citations, and separately and explicitly say which "
+    "part is not covered by the sources — e.g. \"The sources don't cover "
+    "[that specific part].\" A partial grounded answer is always better "
+    "than a blanket refusal.\n"
+    "4. Be concise: 2-5 sentences unless the question clearly needs more."
 )
 
 # Matches both the requested ASCII [N] and full-width 【N】, which some
@@ -73,7 +79,16 @@ _CITATION_RE = re.compile(r"[\[【](\d+)[\]】]")
 def detect_model_abstention(answer: str) -> bool:
     """Instruction-level abstention check: did the model itself say the
     sources don't support an answer? (the second of the two signals the
-    brief asks for, alongside the retrieval-score threshold)."""
+    brief asks for, alongside the retrieval-score threshold).
+
+    This is a PHRASE match only — it does not know whether the answer also
+    contains a real, cited, partial answer alongside the hedge (see
+    `Chatbot.ask`, which combines this with whether any citation was
+    actually parsed out before deciding the turn counts as abstained;
+    Checkpoint 6 found a real case — q10, a two-part question — where the
+    model correctly cited sources for part of the question and only hedged
+    on the other part, but this phrase match alone would have flagged the
+    whole turn as abstained)."""
     lower = answer.lower()
     return any(p in lower for p in ABSTAIN_PHRASES)
 
@@ -157,7 +172,14 @@ class Chatbot:
         ]
         resp = call_llm(messages, model=self.model, max_tokens=500, reasoning_effort="low")
         answer = extract_text(resp).strip()
-        model_abstained = detect_model_abstention(answer)
+        used_citations = parse_used_citations(answer, citations)
+        # A hedge phrase only counts as a FULL abstention if the answer also
+        # produced no real citations. Checkpoint 6 found q10 (a two-part
+        # question) where the model correctly cited sources for the
+        # supported part and only hedged on the unsupported part — phrase
+        # matching alone would have scored that as a full abstention and
+        # thrown away a genuinely grounded partial answer. See DECISIONS.md.
+        model_abstained = detect_model_abstention(answer) and not used_citations
 
         # Retry once on self-abstention: manual testing found GPT-OSS-120B is
         # genuinely non-deterministic at temperature=0 for this task — 3
@@ -168,11 +190,11 @@ class Chatbot:
         if model_abstained:
             resp = call_llm(messages, model=self.model, max_tokens=500, reasoning_effort="low", use_cache=False)
             retry_answer = extract_text(resp).strip()
-            if not detect_model_abstention(retry_answer):
+            retry_citations = parse_used_citations(retry_answer, citations)
+            if not (detect_model_abstention(retry_answer) and not retry_citations):
                 answer = retry_answer
+                used_citations = retry_citations
                 model_abstained = False
-
-        used_citations = parse_used_citations(answer, citations)
 
         turn = ChatTurn(
             question=question,
@@ -184,5 +206,9 @@ class Chatbot:
             top_score=top_score,
             abstain_reason="model_self_assessment" if model_abstained else "",
         )
-        self.history.append({"question": question, "answer": answer})
+        self.history.append({
+            "question": question,
+            "answer": answer,
+            "cited_papers": sorted({c.paper_title for c in used_citations}),
+        })
         return turn

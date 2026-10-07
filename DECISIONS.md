@@ -1108,3 +1108,89 @@ the time budget).
   this eval set are a genuine retrieval weak point independent of rewrite
   quality — worth flagging as a limitation rather than solely a rewriting
   problem.
+
+## 2026-10-07 — Checkpoint 6 fixes: diagnosing the 10 false abstentions (retrieval miss vs. generation error)
+
+Per instruction, diagnosed each of the 10 false-positive abstentions
+individually before changing anything: re-ran retrieval with the exact
+`rewritten_question` each turn actually used, and checked with
+`recall_at_k_multi` (the same Phase 5 hit criterion) whether the question's
+gold chunk(s) were in the diversified top-5.
+
+**8 of 10 were retrieval misses** (gold NOT in top-5 — abstaining was the
+correct, grounded behavior, not an abstention error): q25, q26, q02, q06,
+q29, q18, q22, q31. These are a Phase 5 retrieval-coverage limitation, not a
+Phase 6 generation bug, and are reported separately rather than folded into
+abstention-precision — folding them in understates how well the abstention
+logic itself is working.
+
+**1 of 10 was a genuine generation error**: q03 — gold chunk WAS in the
+top-5 (the literal answer "119,547" present in the sources block) and the
+model still abstained. This is the same case diagnosed earlier as
+temperature=0 non-determinism in GPT-OSS-120B (3 identical direct calls: 1
+correct, 2 false abstentions) — not newly introduced, a pre-existing
+finding this diagnosis re-confirms.
+
+**1 of 10 was a mis-detection, not a real abstention**: q10, a two-part
+question ("one harm affecting cost/latency... one affecting arithmetic").
+The model's actual answer correctly cited sources for the cost/latency part
+and explicitly said the arithmetic part wasn't covered — a genuinely good,
+partially-grounded answer — but the blanket phrase-matching abstention
+detector (`detect_model_abstention`) saw "the corpus does not contain" (used for
+the uncovered second half) and flagged the WHOLE turn as abstained. This is
+exactly the partial-abstention case flagged for a fix.
+
+**Round 1 fixes applied** (one round, both issues addressed together since
+both are generation/detection-side, not retrieval):
+
+1. Abstention detection ([chatbot.py](tokrag/chat/chatbot.py)): a hedge
+   phrase now only counts as a full abstention if the answer ALSO produced
+   zero usable citations (`detect_model_abstention(answer) and not
+   used_citations`). A partial answer with real citations is never
+   discarded as "abstained" just because it also hedges on an unsupported
+   sub-part.
+2. Prompt ([chatbot.py](tokrag/chat/chatbot.py) `ANSWER_SYSTEM_PROMPT`):
+   added an explicit rule for multi-part questions — answer the supported
+   parts with citations, separately flag the unsupported part, rather than
+   refusing the whole question.
+3. Query rewriter ([rewrite.py](tokrag/chat/rewrite.py)): rewrote to use
+   only the MOST RECENT turn (not the full history — a 3-turn eval
+   conversation exists, and turn 3 should anchor on turn 2, not turn 1), a
+   ~200-char summary of the prior answer instead of the full text, and the
+   titles of papers the prior answer cited. The prompt now explicitly
+   instructs the rewriter to NAME the topic/entity a pronoun refers to,
+   not just substitute another pronoun or lightly paraphrase.
+
+**Before -> after (full 36-question eval, [phase6_chat_eval_results.json](phase6_chat_eval_results.json)):**
+
+| Metric | Before (Checkpoint 6 initial) | After Round 1 |
+|---|---|---|
+| Abstention tp / fp / fn / tn | 7 / 10 / 0 / 19 | 7 / 6 / 0 / 23 |
+| Abstention precision (raw) | 0.41 | 0.54 |
+| Abstention precision, excluding retrieval misses | 0.78 (7/9, 2 real errors: q03+q10) | **0.88** (7/8, 1 real error: q03 only) |
+| Abstention recall | 1.0 | 1.0 (unchanged — still zero hallucinated answers on truly unanswerable questions) |
+| Groundedness rate | 0.89 (17/19) | 0.87 (20/23) |
+| Citation rate | 0.84 (16/19) | 0.91 (21/23) |
+| Follow-up recall@5, system rewrite | 0.14 | **0.43** |
+| Follow-up recall@5, gold rewrite | 0.29 | 0.29 (unchanged, it's a fixed reference) |
+
+The excluding-retrieval-misses precision is the number that reflects
+whether the abstention LOGIC works; it went from 0.78 to 0.88 — q10's
+mis-detection is fully fixed (deterministic, not a non-determinism issue,
+so this should hold on reruns), leaving only the single known
+non-deterministic case (q03). Follow-up retrieval improved enough that the
+system's own rewrite now narrowly BEATS the gold rewrite (0.43 vs 0.29) —
+a reversal from before, though both are small samples (7 follow-up
+questions) so this shouldn't be over-read as "solved." Groundedness dipped
+very slightly (0.89 -> 0.87) on a different, larger judged set (19 -> 23,
+since 4 fewer answers abstained) — within noise for this sample size, not
+attributed to the prompt change.
+
+**Stopping after Round 1** (of the 2 allowed): both targeted metrics
+improved substantially and the remaining gap is small and well-understood
+(1 known non-deterministic generation case, plus retrieval misses that are
+correctly out of Phase 6's scope) rather than something a second prompt
+iteration is likely to move further without overfitting to this exact
+36-question set. The remaining q03 non-determinism and the 8 retrieval-miss
+questions are carried into the failure analysis rather than chased with a
+second round.
