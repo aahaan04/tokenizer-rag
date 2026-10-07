@@ -47,7 +47,12 @@ def build_dense_index(
     progress_path = out_dir / "progress.json"
 
     model = SentenceTransformer(model_name)
-    dim = model.get_sentence_embedding_dimension()
+    # sentence-transformers renamed this method; requirements.txt leaves the
+    # version unpinned (>=3.0), so support both rather than breaking on
+    # whatever a fresh install resolves to. Found via the Phase 7 fresh-clone
+    # reproducibility test (a clean install pulled 6.1.0, which warns on the
+    # old name).
+    dim = getattr(model, "get_embedding_dimension", model.get_sentence_embedding_dimension)()
 
     if partial_path.exists() and progress_path.exists():
         embeddings = np.load(partial_path)
