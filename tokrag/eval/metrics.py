@@ -64,10 +64,16 @@ def reciprocal_rank(retrieved: list[dict], gold_group_id: str, gold_span: str) -
     return 0.0
 
 
-def duplicate_rate_at_k(retrieved: list[dict], k: int = 5) -> float:
+def same_paper_share_at_k(retrieved: list[dict], k: int = 5) -> float:
     """Fraction of the top-k chunks whose canonical_paper_id repeats one
-    already seen earlier in the top-k — "N rows of the same paper crowding
-    the other slots," independent of whether any of them are relevant."""
+    already seen earlier in the top-k — ANY repeat, regardless of whether the
+    repeated chunk's content is actually redundant. This is what the original
+    (2026-10-06) duplicate_rate_at_k measured, and what the new cap-2
+    diversification (see dedup/diversify.py) still deliberately allows UP TO
+    2 of per paper — two genuinely different sections of the same paper, not
+    literal duplicates. See redundant_copy_rate_at_k for the stricter,
+    content-aware measure the brief's illustrative example actually
+    describes (2026-10-07, Checkpoint 5 revision)."""
     top = retrieved[:k]
     if not top:
         return 0.0
@@ -80,6 +86,39 @@ def duplicate_rate_at_k(retrieved: list[dict], k: int = 5) -> float:
         else:
             seen.add(pid)
     return dup_count / len(top)
+
+
+# Backward-compat alias — this is what duplicate_rate_at_k meant before the split.
+duplicate_rate_at_k = same_paper_share_at_k
+
+
+def redundant_copy_rate_at_k(retrieved: list[dict], k: int = 5, near_dup_threshold: float = 0.9) -> float:
+    """Fraction of the top-k chunks that are a near-duplicate PASSAGE (word-
+    trigram shingle Jaccard >= threshold) of another chunk from the SAME
+    canonical_paper_id group already in the top-k — the brief's illustrative
+    example ("Paper A, arXiv v1 / v3 / conference version, same results
+    section 3 times"). This is exactly what
+    `dedup.diversify.collapse_near_duplicate_chunks` removes; the threshold
+    here matches that function's default so the two numbers are directly
+    comparable. A paper appearing twice with genuinely DIFFERENT passages
+    does not count here — see same_paper_share_at_k for that broader,
+    content-blind measure."""
+    from tokrag.dedup.diversify import _jaccard, _shingles
+
+    top = retrieved[:k]
+    if not top:
+        return 0.0
+    seen_shingles_by_group: dict = {}
+    redundant = 0
+    for c in top:
+        pid = c.get("canonical_paper_id")
+        sh = _shingles(c.get("text", ""))
+        prior = seen_shingles_by_group.setdefault(pid, [])
+        if any(_jaccard(sh, s) >= near_dup_threshold for s in prior):
+            redundant += 1
+        else:
+            prior.append(sh)
+    return redundant / len(top)
 
 
 def mean_recall_at_k(results: list[tuple[list[dict], str, str]], k: int = 5) -> float:
@@ -97,7 +136,13 @@ def mean_reciprocal_rank(results: list[tuple[list[dict], str, str]]) -> float:
 def mean_duplicate_rate_at_k(all_retrieved: list[list[dict]], k: int = 5) -> float:
     if not all_retrieved:
         return 0.0
-    return sum(duplicate_rate_at_k(r, k) for r in all_retrieved) / len(all_retrieved)
+    return sum(same_paper_share_at_k(r, k) for r in all_retrieved) / len(all_retrieved)
+
+
+def mean_redundant_copy_rate_at_k(all_retrieved: list[list[dict]], k: int = 5) -> float:
+    if not all_retrieved:
+        return 0.0
+    return sum(redundant_copy_rate_at_k(r, k) for r in all_retrieved) / len(all_retrieved)
 
 
 # --- Multi-gold scoring, for multi_paper questions (see the 2026-10-06

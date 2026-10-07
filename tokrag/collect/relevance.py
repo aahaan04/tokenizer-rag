@@ -99,7 +99,9 @@ OFF_TOPIC_DOMAIN_HARD_TERMS = [
     "drug-like",
     "smiles string",
     "protein sequence",
-    "genome",
+    "genom",  # stem: catches genome/genomic/genomics — "genomic" isn't a
+    # substring of "genome", so the literal term missed "genomic language
+    # models" papers; found via the Phase 4 fuzzy-merge audit (2026-10-07)
     "dna sequence",
 ]
 

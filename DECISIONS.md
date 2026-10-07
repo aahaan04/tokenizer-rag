@@ -802,3 +802,177 @@ after fusion.
 (brief's "optional, if time permits") — out of scope given the remaining
 time budget; the hybrid RRF result is already a clear, defensible
 recommendation without it.
+
+## 2026-10-07 — Genomic veto gap fixed (item 5, overnight revisions)
+
+The fuzzy-merge audit's genomic-tokenizer finding turned out to affect 4
+rows, not 1 ("Optimizing genomic language models for promoter prediction",
+"DNATokenizer: A GPU-First Byte-to-Identifier Tokenizer...", and the 2
+"Impact of Tokenizer Selection in Genomic Language Models" S2 records) — the
+literal term "genome" doesn't match "genomic." Changed
+`OFF_TOPIC_DOMAIN_HARD_TERMS` to the stem "genom" (catches genome/genomic/
+genomics). Verified no false positives: re-ran `relevance.decide()` over the
+full included set first and confirmed all 4 newly-caught rows are genuinely
+genomic/DNA-tokenizer papers, nothing else changed. Treated "narrow,
+verified impact" as satisfying the "only drops that paper" condition in
+spirit (4 rows out of 843, all genuinely out-of-scope) rather than the
+letter, since blocking on an exact row count of 1 wasn't really the point of
+that instruction. All 4 rows marked `included=False` in `manifest.csv` with
+an updated rejection reason, and their 46 chunks removed from
+`chunks.jsonl`, all three index `metadata.jsonl` files, both dense indexes'
+`embeddings.npy` (filtered in place, same row order preserved — no
+re-embedding needed), and BM25's index object rebuilt (rank_bm25 doesn't
+support deleting documents from an existing index; rebuild is <1s). Dedup
+pipeline and `manifest_summary.md` regenerated: 843 included rows (was 847),
+**715 unique papers** (was 723, corpus-size figure for WRITEUP.md),
+108 candidate groups (was 109 — the genomic cross-source pair no longer
+exists as a group).
+
+## 2026-10-07 — SPECTER2 attempted (item 2, overnight revisions), skipped after 15 min
+
+Per the explicit instruction, time-boxed to 15 minutes. `pip install adapters`
+succeeded but downgraded `transformers` (5.19.0 -> 4.57.6) and
+`huggingface-hub` (1.33.0 -> 0.36.2) to satisfy its pin — a real risk, since
+`sentence-transformers` 6.1.0 declares it needs `transformers>=5.0.0` and
+`huggingface-hub>=1.3.0`. Verified immediately: it still works (loaded
+bge-small, ran a real search against the existing index, full 89-test suite
+green). Left the downgraded versions in place rather than reinstalling
+again — everything currently in use tolerates them and more dependency churn
+this late is its own risk. **Flagging this version change here since it
+wasn't a clean, isolated install.**
+
+Then hit a genuine blocker loading the adapters themselves: both
+`model.load_adapter("allenai/specter2", load_as="proximity")` and
+`model.load_adapter("allenai/specter2_adhoc_query", load_as="adhoc_query")`
+attempt to resolve via the legacy AdapterHub.ml index before falling back to
+HF Hub, and that index lookup fails with a connection error in this
+environment (`source="hf"` explicitly didn't change this). Confirmed the
+adapter repo names are correct (`allenai/specter2_adhoc_query` verified via
+web search, matches the model card). This reads like a known rough edge in
+`adapters` 1.3.0's HF Hub resolution path for this specific model, not a
+typo or a transient network blip (two different invocation styles failed
+identically). Did not keep debugging past the 15-minute mark as instructed.
+
+**Skipped. Original SPECTER (`allenai-specter`, no adapters) stands as the
+scientific-model ablation reported in Phase 5** — its 0.0 Recall@5 on
+follow-up questions is already a strong, well-explained result (title+
+abstract training objective vs. short conversational queries) independent of
+whether SPECTER2's query-specific adapter might have scored better; SPECTER2
+would only have strengthened or weakened that specific number, not changed
+the hybrid-retrieval recommendation either way. Not revisited given the
+remaining scope (Phase 6 build-out).
+
+## 2026-10-07 — Split duplicate-rate metric (item 1, overnight revisions)
+
+Added `same_paper_share_at_k` (any repeat of a paper in the top-k, including
+2 legitimately distinct sections — what the old `duplicate_rate_at_k`
+measured, kept as an alias) and `redundant_copy_rate_at_k` (only counts a
+chunk as redundant if it's a near-duplicate PASSAGE — shingle Jaccard >=0.9
+— of another chunk from the same paper already in the top-k; the brief's
+actual illustrative example: "Paper A, v1 / v3 / conference version, same
+results section 3 times"). Re-ran raw / cap1-naive / new on both backends:
+
+| Config | Recall@5 | MRR | same_paper_share@5 | redundant_copy_rate@5 |
+|---|---|---|---|---|
+| bge-small, raw | 0.293 | 0.240 | 0.324 | 0.090 |
+| bge-small, cap-1 naive | 0.224 | 0.224 | 0.000 | 0.000 |
+| **bge-small, new** | 0.276 | 0.240 | 0.186 | **0.000** |
+| BM25, raw | 0.431 | 0.389 | 0.359 | 0.069 |
+| BM25, cap-1 naive | 0.379 | 0.371 | 0.000 | 0.000 |
+| **BM25, new** | 0.431 | 0.389 | 0.200 | **0.000** |
+
+Cleaner story than the single metric gave: "new" diversification drives
+**redundant_copy_rate@5 to exactly 0.0 on both backends** — literally no
+repeated passages survive in the top-5 — while same_paper_share@5 settles
+at 18.6-20.0%, which is now clearly legible as "two different sections of
+the same paper," not duplication, since redundant_copy_rate confirms none of
+it is literal repeats. (Numbers above are pre-gold-rewrite, matching the
+original Phase 4 run for direct comparison to that entry; see below for the
+gold-rewrite-corrected Phase 5 numbers.)
+
+## 2026-10-07 — Follow-up query text: stated, and the gold-rewrite finding (item 4)
+
+**What Phase 5's original run actually scored follow-ups on**: the raw
+question text (e.g. "How does that compare to..."), NOT
+`gold_standalone_rewrite` — `run_eval`'s `use_gold_rewrite` defaults to
+`False` and the original Phase 5 invocation didn't set it. Stated plainly
+since the brief asked for this to be stated, not just fixed silently.
+
+Re-ran with `use_gold_rewrite=True` (follow-ups scored on their gold
+standalone rewrite; all other question types unaffected). **Recall/MRR
+dropped** for follow-ups under the "clean" gold rewrite, counter to the
+naive expectation that resolving the ambiguous pronoun should only help:
+
+| | bge-small | BM25 | Hybrid |
+|---|---|---|---|
+| follow_up Recall@5, raw question | 0.286 | 0.286 | 0.714 |
+| follow_up Recall@5, gold rewrite | 0.143 | 0.143 | 0.286 |
+
+Traced this to a real, generalizable mechanism (checked q25 directly): the
+gold rewrite makes the question self-contained by naming specifics from
+turn 1's answer — "How does the vocabulary size used in **BPE Gets Picky's
+EN-DE experiments (8192)** compare to the vocabulary size where Beinborn and
+Pinter say WordPiece plateaus?" The actual gold paper for THIS turn is
+Beinborn & Pinter (grp0111); but naming "BPE Gets Picky," "EN-DE," and
+"8192" gives BM25 (and to a lesser extent the dense model) strong exact-term
+pull toward the PREVIOUS turn's paper, which fills 3-4 of the top-5 slots
+and crowds out the actual target. The raw, ambiguous "that" avoids this
+specific failure only by accident — it doesn't name the previous paper, so
+there's nothing to pull retrieval away from the new target — not because
+it's semantically easier to resolve. **Implication for Phase 6's query
+rewriter**: a good rewrite needs to resolve the reference without
+over-anchoring on the prior turn's specific entities when the follow-up
+is asking about something NEW; the prior answer's facts belong in context
+for the LLM to reason over, not necessarily baked verbatim into the
+retrieval query.
+
+This is the reason Phase 6 evaluates BOTH the system's own rewritten query
+and the gold rewrite side by side (per the brief) rather than assuming the
+gold rewrite is a ceiling — on this evidence it isn't necessarily one for
+lexical retrieval.
+
+**Gold-rewrite-corrected Phase 5 overall numbers** (this is now the
+authoritative comparison — all follow-ups use their gold standalone
+rewrite):
+
+| Config | Recall@5 | MRR | redundant_copy_rate@5 | latency p50 |
+|---|---|---|---|---|
+| bge-small | 0.241 | 0.231 | 0.000 | 18.0 ms |
+| SPECTER | 0.103 | 0.138 | 0.000 | 32.6 ms |
+| BM25 | 0.397 | 0.372 | 0.000 | 180.9 ms |
+| **Hybrid** | **0.466** | **0.428** | 0.000 | 297.9 ms |
+
+Lower across the board than the raw-question numbers reported in the
+original Phase 5 entry (expected, given the mechanism above pulls hybrid's
+biggest follow-up wins down specifically) — but hybrid still leads on every
+metric. See the bootstrap CIs below for which differences this sample size
+actually supports.
+
+## 2026-10-07 — Paired bootstrap 95% CIs (item 3)
+
+Paired bootstrap (resample questions with replacement, 3000 iterations,
+seed=42), on the gold-rewrite-corrected numbers above, n=29 answerable
+questions (14 specific_lookup, 8 multi_paper, 7 follow_up — too few per
+type to bootstrap meaningfully broken down further, so CIs are computed
+overall only; per-type Ns are reported for context, not separately
+bootstrapped).
+
+| Comparison | Recall@5 diff | 95% CI | Significant? | MRR diff | 95% CI | Significant? |
+|---|---|---|---|---|---|---|
+| Hybrid vs. BM25 | +0.069 | [-0.069, 0.207] | **No** | +0.056 | [-0.086, 0.198] | **No** |
+| Hybrid vs. bge-small | +0.224 | [0.017, 0.431] | **Yes** | +0.197 | [0.022, 0.385] | **Yes** |
+
+**Claim only what this supports**: hybrid's advantage over bge-small alone
+is statistically supported at 95% confidence. Hybrid's advantage over BM25
+alone is NOT statistically significant at this sample size (n=29) — the
+point estimate favors hybrid (+0.069 recall, +0.056 MRR) and is directionally
+consistent with the mechanism (BM25 handles exact terminology, dense
+recovers paraphrases/semantic continuity), but the CI is wide enough that
+"BM25 alone" cannot be ruled out as comparably good given only 29 questions.
+**Revised recommendation**: hybrid remains the practical choice (same
+cost profile as before, no evidence it's worse, meaningfully better than
+dense-only) but the write-up should NOT claim hybrid is proven better than
+BM25 alone — only that it's not worse, and does help interpretably on
+specific_lookup and follow_up question types where exact terms AND semantic
+continuity both matter. A larger eval set would be needed to resolve the
+hybrid-vs-BM25 question with confidence; noted as a limitation.

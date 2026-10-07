@@ -1,14 +1,14 @@
 # Manifest summary
 
 Total candidate rows: 7547
-Included rows: 847
-**Unique papers (corpus size, reported in WRITEUP.md): 723**
-  - 105 cross-source groups (229 rows) — same paper found via multiple sources/versions
-  - 618 singleton rows — found via one source only
+Included rows: 843
+**Unique papers (corpus size, reported in WRITEUP.md): 715**
+  - 108 cross-source groups (236 rows) — same paper found via multiple sources/versions
+  - 607 singleton rows — found via one source only
 
 ## Included, by source
 - acl_anthology: 457
-- semantic_scholar: 285
+- semantic_scholar: 281
 - arxiv: 105
 
 ## Included, by year
@@ -41,23 +41,23 @@ Included rows: 847
 - 2022: 54
 - 2023: 89
 - 2024: 128
-- 2025: 185
-- 2026: 179
+- 2025: 183
+- 2026: 177
 
-## Rejected: 6700
+## Rejected: 6704
 - below relevance threshold: 6338
-- vetoed (off-topic domain or classic-pipeline): 362
+- vetoed (off-topic domain or classic-pipeline): 366
   - classic-pipeline: 251
   - domain-soft: 75
-  - domain-hard: 36
+  - domain-hard: 40
 
 ## Candidate group breakdown (Phase 4, single source of truth)
 
-Total groups: 109 (238 rows across those groups)
+Total groups: 108 (236 rows across those groups)
 - Version-pair only (same source, multiple arXiv versions): 7
 - Cross-source only (preprint vs. published, no version pair): 80
 - Both version pair AND cross-source: 18
 - Degenerate (1 included member; other member excluded by relevance filtering): 1
-- Other (e.g. duplicate same-source ACL bib records): 3
+- Other (e.g. duplicate same-source ACL bib records): 2
 
 See dedup_audit.md for the full false-merge audit and fuzzy-tier merge list.

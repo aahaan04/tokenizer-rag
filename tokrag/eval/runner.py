@@ -133,8 +133,9 @@ def run_eval(searcher, k: int = 5, diversify_mode: str = "none", use_gold_rewrit
     apply_diversify = _diversify_mode_fn(diversify_mode, k, survey_group_ids, canonical_ids)
 
     questions = load_questions()
-    by_type: dict = {}  # type -> {"recall_results": [...], "dup_rates": [...]}
+    by_type: dict = {}  # type -> {"recall_results": [...], "same_paper": [...], "redundant": [...]}
     latencies_ms: list = []
+    per_question: list = []  # [(question_id, retrieved, golds)], for cross-config paired bootstrap CIs
 
     for q in questions:
         if q["type"] == "unanswerable":
@@ -149,10 +150,12 @@ def run_eval(searcher, k: int = 5, diversify_mode: str = "none", use_gold_rewrit
         retrieved = apply_diversify(retrieved)
         latencies_ms.append((time.perf_counter() - t0) * 1000)
 
-        bucket = by_type.setdefault(q["type"], {"recall_results": [], "dup_rates": []})
-        bucket["dup_rates"].append(metrics.duplicate_rate_at_k(retrieved, k=k))
+        bucket = by_type.setdefault(q["type"], {"recall_results": [], "same_paper": [], "redundant": []})
+        bucket["same_paper"].append(metrics.same_paper_share_at_k(retrieved, k=k))
+        bucket["redundant"].append(metrics.redundant_copy_rate_at_k(retrieved, k=k))
         golds = [(g["group_id"], g["supporting_span"]) for g in q["gold"]]
         bucket["recall_results"].append((retrieved, golds))
+        per_question.append((q["id"], retrieved, golds))
 
     latencies_ms.sort()
     n_lat = len(latencies_ms)
@@ -167,11 +170,13 @@ def run_eval(searcher, k: int = 5, diversify_mode: str = "none", use_gold_rewrit
             "n": len(bucket["recall_results"]),
             "recall_at_k": round(metrics.mean_recall_at_k_multi(bucket["recall_results"], k=k), 4),
             "mrr": round(metrics.mean_reciprocal_rank_multi(bucket["recall_results"]), 4),
-            "duplicate_rate_at_k": round(sum(bucket["dup_rates"]) / len(bucket["dup_rates"]), 4) if bucket["dup_rates"] else 0.0,
+            "same_paper_share_at_k": round(sum(bucket["same_paper"]) / len(bucket["same_paper"]), 4) if bucket["same_paper"] else 0.0,
+            "redundant_copy_rate_at_k": round(sum(bucket["redundant"]) / len(bucket["redundant"]), 4) if bucket["redundant"] else 0.0,
         }
 
     all_recall_results = [r for b in by_type.values() for r in b["recall_results"]]
-    all_dup_rates = [d for b in by_type.values() for d in b["dup_rates"]]
+    all_same_paper = [d for b in by_type.values() for d in b["same_paper"]]
+    all_redundant = [d for b in by_type.values() for d in b["redundant"]]
 
     return {
         "diversify_mode": diversify_mode,
@@ -181,10 +186,57 @@ def run_eval(searcher, k: int = 5, diversify_mode: str = "none", use_gold_rewrit
             "n": len(all_recall_results),
             "recall_at_k": round(metrics.mean_recall_at_k_multi(all_recall_results, k=k), 4),
             "mrr": round(metrics.mean_reciprocal_rank_multi(all_recall_results), 4),
-            "duplicate_rate_at_k": round(sum(all_dup_rates) / len(all_dup_rates), 4) if all_dup_rates else 0.0,
+            "same_paper_share_at_k": round(sum(all_same_paper) / len(all_same_paper), 4) if all_same_paper else 0.0,
+            "redundant_copy_rate_at_k": round(sum(all_redundant) / len(all_redundant), 4) if all_redundant else 0.0,
         },
         "by_type": {t: _summarize(b) for t, b in sorted(by_type.items())},
         "query_latency": latency_stats,
+        "per_question": per_question,
+    }
+
+
+def paired_bootstrap_ci(per_question_a: list, per_question_b: list, k: int = 5, n_boot: int = 2000, seed: int = 42) -> dict:
+    """Paired bootstrap 95% CI for (metric_a - metric_b), resampling
+    QUESTIONS with replacement (not individual chunk hits) so the pairing by
+    question stays intact across the two configs being compared. Requires
+    per_question_a/b (as returned by run_eval's "per_question") to list the
+    SAME questions in the SAME order — true by construction, since both come
+    from iterating eval/questions.jsonl in file order.
+
+    Returns Recall@5 and MRR diffs; "significant" means the 95% CI excludes
+    0 — report differences only when this holds, per the brief's "only claim
+    differences the CIs support" instruction.
+    """
+    import random
+
+    ids_a = [qid for qid, _, _ in per_question_a]
+    ids_b = [qid for qid, _, _ in per_question_b]
+    assert ids_a == ids_b, "per_question lists must cover the same questions in the same order to pair correctly"
+
+    n = len(per_question_a)
+    recall_a = [metrics.recall_at_k_multi(r, g, k=k) for _, r, g in per_question_a]
+    recall_b = [metrics.recall_at_k_multi(r, g, k=k) for _, r, g in per_question_b]
+    mrr_a = [metrics.reciprocal_rank_multi(r, g) for _, r, g in per_question_a]
+    mrr_b = [metrics.reciprocal_rank_multi(r, g) for _, r, g in per_question_b]
+
+    rng = random.Random(seed)
+    recall_diffs, mrr_diffs = [], []
+    for _ in range(n_boot):
+        idxs = [rng.randrange(n) for _ in range(n)]
+        recall_diffs.append(sum(recall_a[i] for i in idxs) / n - sum(recall_b[i] for i in idxs) / n)
+        mrr_diffs.append(sum(mrr_a[i] for i in idxs) / n - sum(mrr_b[i] for i in idxs) / n)
+    recall_diffs.sort()
+    mrr_diffs.sort()
+    lo_i, hi_i = int(0.025 * n_boot), int(0.975 * n_boot)
+
+    def _result(diffs, observed):
+        lo, hi = diffs[lo_i], diffs[hi_i]
+        return {"observed_diff": round(observed, 4), "ci_95": [round(lo, 4), round(hi, 4)], "significant": not (lo <= 0 <= hi)}
+
+    return {
+        "n": n,
+        "recall_at_k": _result(recall_diffs, sum(recall_a) / n - sum(recall_b) / n),
+        "mrr": _result(mrr_diffs, sum(mrr_a) / n - sum(mrr_b) / n),
     }
 
 

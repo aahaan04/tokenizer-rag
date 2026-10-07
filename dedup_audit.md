@@ -2,47 +2,21 @@
 
 ## Group breakdown (single source of truth, see DECISIONS.md)
 
-- Total groups: 109 (238 rows)
+- Total groups: 108 (236 rows)
   - Version-pair only (same source, multiple arXiv versions): 7
   - Cross-source only (preprint vs. published, no version pair): 80
   - Both version pair AND cross-source: 18
   - Degenerate (1 included member; other member excluded by relevance filtering): 1
-  - Other (e.g. duplicate same-source ACL bib records): 3
+  - Other (e.g. duplicate same-source ACL bib records): 2
 
-Groups audited (pairwise): 108
-Pairs audited: 152
+Groups audited (pairwise): 107
+Pairs audited: 151
 Low-confidence merges (abstract cosine < 0.7 OR zero author overlap): 19
 Surveys flagged: 4
 Near-miss pairs (NOT merged, similar title + shared author): 114
-Fuzzy-tier merges applied (title_sim>=0.85 + author/abstract support, or manual exception): 6
+Fuzzy-tier merges applied (title_sim>=0.85 + author/abstract support, or manual exception): 0
 
-## Fuzzy-tier merges applied (cumulative; 0 new on the most recent rerun since
-## these were already persisted to manifest.csv from the run that found them
-## — listed here directly rather than re-detected, since find_fuzzy_merges
-## only scans ungrouped singletons)
-
-- **grp0167** — fuzzy: title_sim=0.974 shared_authors=1 year_diff=1 abstract_sim=0.964
-  - A: SemToken: Semantic-Aware Tokenization for Efficient Long-Context Language Modeling (semantic_scholar:5324543701de3988b0855ada9e59c8ac0939edbd)
-  - B: SemToken: Semantic-Aware Tokenization for Efficient Long-Context Language Models (acl_anthology:liu-yu-2026-semtoken)
-- **grp0168** — fuzzy: title_sim=0.912 shared_authors=1 year_diff=0 abstract_sim=1.0
-  - A: MANTa: Efficient Gradient-Based Tokenization for End-to-End Robust Language Modeling (acl_anthology:godey-etal-2022-manta)
-  - B: MANTa: Efficient Gradient-Based Tokenization for Robust End-to-End Language Modeling (semantic_scholar:bc518f89f1ea8244ca019fd03c8c70f9d3c7fe9d)
-- **grp0169** — fuzzy: title_sim=0.917 shared_authors=4 year_diff=0 abstract_sim=None (strong-author path; one record's abstract is empty, a known S2 duplicate-crawl artifact — confirmed same paper by inspection)
-  - A: Tokens with Meaning: A Hybrid Tokenization Approach for Turkish (semantic_scholar:b683c670b535225eb10ac4592552fb5b75d3dabe)
-  - B: Tokens with Meaning: A Hybrid Tokenization Approach for NLP (semantic_scholar:91e76283ab8f311e37daf0b0194741f7d2baef4f)
-- **grp0170** — fuzzy: title_sim=1.0 shared_authors=8 year_diff=0 abstract_sim=None (case-only title difference; NOTE: "genomic language models" — this paper's domain should likely have been hard-vetoed in Phase 1 but "genomic" isn't a substring of the veto term "genome"; flagged as a topic-boundary gap, not fixed given remaining time)
-  - A: The impact of tokenizer selection in genomic language models (semantic_scholar:2dd89664211440997a5c5531cd5689288254bae2)
-  - B: The Impact of Tokenizer Selection in Genomic Language Models (semantic_scholar:7b298b2bebfe212f395094281c77927f2c92c988)
-- **grp0012** — manual (user-confirmed at Checkpoint 4): title_sim=0.667 (char-level) / 0.333 (word-Jaccard) — well under the 0.85 general threshold, applied as a named exception, not a threshold change. Extended an existing Phase 1 exact-title-match group (3 members total).
-  - A: MorphBPE: Morphology-Aware Tokenization for Efficient LLM Training (semantic_scholar:b6b6ba84783b6133d03365ceb8d4a22a706dab49 AND acl_anthology:asgari-etal-2026-morphbpe)
-  - B: MorphBPE: A Morpho-Aware Tokenizer Bridging Linguistic Complexity for Efficient LLM Training Across Morphologies (semantic_scholar:0a17cab809062aeabf4f6e3710aec88945c98e04)
-
-## REVERTED: one false merge caught and fixed before being kept
-
-- title_sim=0.855 shared_authors=3 (these "shared authors" were workshop-editor names, not paper authors — ACL `@proceedings` entries have no real author field) year_diff=1
-  - A: Proceedings of the First Workshop on Subword and Character Level Models in NLP (acl_anthology:ws-2017-subword), 2017
-  - B: Proceedings of the Second Workshop on Subword/Character LEvel Models (acl_anthology:ws-2018-subword), 2018
-  - Two DIFFERENT years' proceedings volumes, not the same paper. Reverted; added a guard (skip any pair where either title starts with "Proceedings of") so this class of false positive can't recur — see DECISIONS.md.
+## Fuzzy-tier merges applied this run
 
 (none)
 
@@ -259,7 +233,6 @@ Fuzzy-tier merges applied (title_sim>=0.85 + author/abstract support, or manual 
 - grp0167: title_sim=0.974 author_overlap=0.333 abstract_cosine=0.964 | SemToken: Semantic-Aware Tokenization for Efficient Long-Context Langu
 - grp0168: title_sim=0.912 author_overlap=0.143 abstract_cosine=1.0 | MANTa: Efficient Gradient-Based Tokenization for End-to-End Robust Lan
 - grp0169: title_sim=0.917 author_overlap=0.4 abstract_cosine=0.554 | Tokens with Meaning: A Hybrid Tokenization Approach for Turkish
-- grp0170: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.993 | The impact of tokenizer selection in genomic language models
 
 ## Near-miss pairs (NOT merged), for manual spot-check
 
@@ -326,12 +299,12 @@ Fuzzy-tier merges applied (title_sim>=0.85 + author/abstract support, or manual 
 - title_sim=0.548 author_overlap=0.25
   - A: Bilingual Subword Segmentation for Neural Machine Translation (acl_anthology:deguchi-etal-2020-bilingual)
   - B: Probabilistic Bilingual Subword Segmentation with Latent Subword Alignment (acl_anthology:nishida-etal-2026-probabilistic)
-- title_sim=0.539 author_overlap=0.375
-  - A: SubMerge: Merging Equivalent Subword Tokenizations for Subword Regularized Models in Neural Machine Translation (acl_anthology:song-etal-2024-submerge)
-  - B: BERTSeg: BERT Based Unsupervised Subword Segmentation for Neural Machine Translation (semantic_scholar:82004b8e8488d2ebb413427ef4221b7e0d6e9f1e)
 - title_sim=0.539 author_overlap=0.571
   - A: SubMerge: Merging Equivalent Subword Tokenizations for Subword Regularized Models in Neural Machine Translation (acl_anthology:song-etal-2024-submerge)
   - B: BERTSeg: BERT Based Unsupervised Subword Segmentation for Neural Machine Translation (acl_anthology:song-etal-2022-bertseg)
+- title_sim=0.539 author_overlap=0.375
+  - A: SubMerge: Merging Equivalent Subword Tokenizations for Subword Regularized Models in Neural Machine Translation (acl_anthology:song-etal-2024-submerge)
+  - B: BERTSeg: BERT Based Unsupervised Subword Segmentation for Neural Machine Translation (semantic_scholar:82004b8e8488d2ebb413427ef4221b7e0d6e9f1e)
 - title_sim=0.539 author_overlap=0.571
   - A: SubMerge: Merging Equivalent Subword Tokenizations for Subword Regularized Models in Neural Machine Translation (semantic_scholar:cdcd63e787819485988c6dd8bb9cb7180a5248c2)
   - B: BERTSeg: BERT Based Unsupervised Subword Segmentation for Neural Machine Translation (semantic_scholar:82004b8e8488d2ebb413427ef4221b7e0d6e9f1e)
@@ -587,18 +560,18 @@ Fuzzy-tier merges applied (title_sim>=0.85 + author/abstract support, or manual 
 - title_sim=0.413 author_overlap=0.25
   - A: Mind the Gap: A Closer Look at Tokenization for Multiple-Choice Question Answering with LLMs (acl_anthology:sanz-guerrero-etal-2025-mind)
   - B: The Effectiveness of Uncased Tokeniziaion for Clinical Notes (acl_anthology:paik-wense-2025-effectiveness)
-- title_sim=0.412 author_overlap=1.0
-  - A: MoVoC: Morphology-Aware Subword Construction for Ge'ez Script Languages (acl_anthology:teklehaymanot-etal-2025-movoc)
-  - B: LGSE: Lexically Grounded Subword Embedding Initialization for Low-Resource Language Adaptation (acl_anthology:teklehaymanot-etal-2026-lgse)
-- title_sim=0.412 author_overlap=1.0
-  - A: MoVoC: Morphology-Aware Subword Construction for Geez Script Languages (semantic_scholar:9bd6cd6fdc95345e2c7f44a21338faceaa0d8e31)
-  - B: LGSE: Lexically Grounded Subword Embedding Initialization for Low-Resource Language Adaptation (acl_anthology:teklehaymanot-etal-2026-lgse)
 - title_sim=0.412 author_overlap=0.5
   - A: MoVoC: Morphology-Aware Subword Construction for Ge'ez Script Languages (acl_anthology:teklehaymanot-etal-2025-movoc)
   - B: LGSE: Lexically Grounded Subword Embedding Initialization for Low-Resource Language Adaptation (semantic_scholar:d125e7680ef9da46c9fdcabf05ebc488e13d827a)
+- title_sim=0.412 author_overlap=1.0
+  - A: MoVoC: Morphology-Aware Subword Construction for Ge'ez Script Languages (acl_anthology:teklehaymanot-etal-2025-movoc)
+  - B: LGSE: Lexically Grounded Subword Embedding Initialization for Low-Resource Language Adaptation (acl_anthology:teklehaymanot-etal-2026-lgse)
 - title_sim=0.412 author_overlap=0.5
   - A: MoVoC: Morphology-Aware Subword Construction for Geez Script Languages (semantic_scholar:9bd6cd6fdc95345e2c7f44a21338faceaa0d8e31)
   - B: LGSE: Lexically Grounded Subword Embedding Initialization for Low-Resource Language Adaptation (semantic_scholar:d125e7680ef9da46c9fdcabf05ebc488e13d827a)
+- title_sim=0.412 author_overlap=1.0
+  - A: MoVoC: Morphology-Aware Subword Construction for Geez Script Languages (semantic_scholar:9bd6cd6fdc95345e2c7f44a21338faceaa0d8e31)
+  - B: LGSE: Lexically Grounded Subword Embedding Initialization for Low-Resource Language Adaptation (acl_anthology:teklehaymanot-etal-2026-lgse)
 - title_sim=0.407 author_overlap=0.333
   - A: Investigating the Effectiveness of BPE: The Power of Shorter Sequences (acl_anthology:galle-2019-investigating)
   - B: Tokenization Repair in the Presence of Spelling Errors (acl_anthology:bast-etal-2021-tokenization)

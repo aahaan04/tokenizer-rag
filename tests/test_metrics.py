@@ -6,10 +6,13 @@ from tokrag.eval.metrics import (
     mean_recall_at_k_multi,
     mean_reciprocal_rank,
     mean_reciprocal_rank_multi,
+    mean_redundant_copy_rate_at_k,
     recall_at_k,
     recall_at_k_multi,
     reciprocal_rank,
     reciprocal_rank_multi,
+    redundant_copy_rate_at_k,
+    same_paper_share_at_k,
 )
 
 
@@ -68,6 +71,36 @@ def test_duplicate_rate_counts_repeated_papers_in_top_k():
 def test_duplicate_rate_zero_when_all_distinct():
     retrieved = [_chunk(f"grp{i}", "x") for i in range(5)]
     assert duplicate_rate_at_k(retrieved, k=5) == 0.0
+
+
+def test_same_paper_share_is_duplicate_rate_alias():
+    retrieved = [_chunk("grpA", "intro text"), _chunk("grpA", "results text"), _chunk("grpB", "b text")]
+    assert same_paper_share_at_k(retrieved, k=5) == duplicate_rate_at_k(retrieved, k=5) == 1 / 3
+
+
+def test_redundant_copy_rate_counts_only_near_duplicate_passages():
+    same_passage = "SentencePiece comprises four main components a b c d e f g h"
+    retrieved = [_chunk("grpA", same_passage), _chunk("grpA", same_passage), _chunk("grpB", "unrelated text")]
+    # grpA's 2nd chunk is a near-duplicate of the 1st -> 1 redundant copy out of 3.
+    assert redundant_copy_rate_at_k(retrieved, k=5) == 1 / 3
+
+
+def test_redundant_copy_rate_zero_when_same_paper_but_distinct_passages():
+    # Two DIFFERENT sections of the same paper (allowed by cap-2) are not "redundant."
+    retrieved = [_chunk("grpA", "the introduction discusses motivation and background"), _chunk("grpA", "the results table shows numeric outcomes")]
+    assert redundant_copy_rate_at_k(retrieved, k=5) == 0.0
+
+
+def test_redundant_copy_rate_ignores_cross_group_matches():
+    same_passage = "SentencePiece comprises four main components a b c d e f g h"
+    retrieved = [_chunk("grpA", same_passage), _chunk("grpB", same_passage)]
+    assert redundant_copy_rate_at_k(retrieved, k=5) == 0.0
+
+
+def test_mean_redundant_copy_rate_averages_across_questions():
+    same_passage = "SentencePiece comprises four main components a b c d e f g h"
+    all_retrieved = [[_chunk("grpA", same_passage), _chunk("grpA", same_passage)], [_chunk("grpB", "distinct")]]
+    assert mean_redundant_copy_rate_at_k(all_retrieved, k=5) == (0.5 + 0.0) / 2
 
 
 def test_mean_functions_average_across_questions():

@@ -113,6 +113,18 @@ def test_classic_pipeline_rescued_by_explicit_subword_mention():
     assert included
 
 
+def test_genomic_domain_vetoed_even_though_genome_substring_absent():
+    # "genomic" does not contain "genome" as a literal substring — a bug
+    # found via the Phase 4 fuzzy-merge audit let genomic-tokenizer papers
+    # through. The hard-veto term is now the stem "genom".
+    included, reason = decide(
+        "The Impact of Tokenizer Selection in Genomic Language Models",
+        "We study how tokenizer choice affects genomic language model performance.",
+    )
+    assert not included
+    assert reason.startswith("veto:domain-hard:")
+
+
 def test_core_topic_paper_scores_high():
     s = score(
         "SentencePiece: A Simple and Language Independent Subword Tokenizer",
