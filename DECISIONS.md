@@ -596,3 +596,209 @@ because this is the bge-small-only baseline; Phase 5 compares against BM25,
 SPECTER, and hybrid retrieval, which are expected to do meaningfully better
 on this corpus's exact-terminology-heavy questions (see the brief's own
 "SentencePiece"/"fertility" example).
+
+## 2026-10-07 — Checkpoint 4 revision: diversification redesign (the recall drop was a real design flaw)
+
+User correction, confirmed correct: "cap 1 chunk per paper" was removing
+DISTINCT relevant content, not just duplicates — a design flaw in the
+diversifier, not an inherent trade-off of deduping. Fixed in
+`dedup/diversify.py`:
+
+1. Collapse near-duplicate CHUNKS within a group first
+   (`collapse_near_duplicate_chunks`, word-trigram shingle Jaccard >= 0.9 on
+   chunk text — the same passage repeated across a paper's
+   arXiv/ACL/S2 copies), preferring the canonical row's copy when one of the
+   duplicates belongs to it. This is the key fix: capping was happening at
+   the PAPER level before, so two genuinely different sections of the same
+   paper (e.g. Introduction and Results) got treated as interchangeable and
+   only one survived regardless of content.
+2. Only then cap how many of the now-distinct chunks from one paper can fill
+   the top-k — raised from 1 to 2, so two different sections of the same
+   paper can both surface once they're confirmed non-duplicate.
+3. Retrieval overfetches top-50 (was top-30) before diversifying, giving more
+   room to fill slots with distinct content after collapsing/capping.
+4. Survey demotion unchanged.
+
+The original cap-1 implementation is kept as `diversify_cap1_naive` — an
+explicit ablation baseline for WRITEUP.md, not deleted, since the brief
+wants the "what goes wrong with naive dedup" story and it's a clean one.
+
+**Before / cap-1-naive / new, all three, bge-small AND BM25, k=5, 29 answerable questions:**
+
+| Config | Recall@5 | MRR | dup_rate@5 |
+|---|---|---|---|
+| bge-small, raw (no diversify) | 0.293 | 0.240 | 0.324 |
+| bge-small, cap-1 naive | 0.224 | 0.224 | 0.000 |
+| **bge-small, new** | **0.276** | **0.240** | **0.186** |
+| BM25, raw (no diversify) | 0.431 | 0.389 | 0.359 |
+| BM25, cap-1 naive | 0.379 | 0.371 | 0.000 |
+| **BM25, new** | **0.431** | **0.389** | **0.200** |
+
+BM25 with the new approach **fully recovers raw Recall@5/MRR** (0.431/0.389,
+identical to no-diversification) while still cutting duplicate rate from
+35.9% to 20.0%. bge-small recovers most but not all of the recall lost by
+cap-1 (0.224 -> 0.276, vs raw 0.293) while cutting dup rate from 32.4% to
+18.6% — the residual 1.7-point gap is the "keep 2, not more" cap itself
+occasionally still not being enough slots, a smaller and more defensible
+remainder than cap-1's flaw.
+
+**By question type** (bge-small / BM25, recall @5):
+
+| Type | bge raw | bge cap-1 | bge new | BM25 raw | BM25 cap-1 | BM25 new |
+|---|---|---|---|---|---|---|
+| specific_lookup (n=14) | 0.429 | 0.357 | 0.357 | 0.643 | 0.571 | 0.643 |
+| multi_paper (n=8) | 0.062 | 0.062 | 0.125 | 0.188 | 0.125 | 0.188 |
+| follow_up (n=7) | 0.286 | 0.143 | 0.286 | 0.286 | 0.286 | 0.286 |
+
+Notable: bge-small's multi_paper recall actually *improves* over raw with
+the new approach (0.062 -> 0.125) — allowing 2 chunks/paper occasionally
+surfaces a second gold paper's chunk that cap-1 would have blocked by
+keeping only 1 slot for an unrelated paper's duplicate. BM25's
+specific_lookup and follow_up recall are identical between raw and new,
+confirming the near-duplicate collapse is correctly distinguishing "same
+passage" from "different passage, same paper" rather than over- or
+under-collapsing.
+
+## 2026-10-07 — Group count reconciliation (one number, going forward)
+
+Earlier session turns cited "159 cross-source groups" (an intermediate state,
+mid-debugging, before the arXiv-fetch-ordering bug fix and before several
+reruns) and later "105 groups / 104 audited" (post-fixes, pre-fuzzy-tier).
+Neither was wrong for the moment it was reported, but they shouldn't have
+been left unreconciled. **Single source of truth going forward**:
+`dedup.pipeline.group_breakdown()`, reported identically in this file and in
+`manifest_summary.md`. Current state (after the fuzzy-merge tier below):
+
+- Total groups: 109 (238 rows)
+  - Version-pair only (same source, multiple arXiv versions): 7
+  - Cross-source only (preprint vs. published, no version pair): 80
+  - Both version-pair AND cross-source: 18
+  - Degenerate (1 included member; the group's other member exists in the
+    raw candidate pool but was excluded by relevance filtering — not a bug,
+    e.g. an ACL copy of an included arXiv paper that scored below threshold
+    or hit the speech/music veto independently): 1
+  - Other (same-source duplicate, not a version pair — e.g. two ACL bib
+    records for the same paper under different anthology IDs): 3
+
+`n_groups_audited` (104 -> 108 after fuzzy merges) in dedup_audit.md is
+smaller than total_groups because the false-merge audit only runs pairwise
+comparisons on groups with >=2 members — the 1 degenerate single-member
+group contributes 0 pairs.
+
+## 2026-10-07 — Fuzzy preprint-vs-published matching tier added
+
+Rule (exactly as specified): title_sim >= 0.85 AND (>=2 shared authors OR
+(>=1 shared author AND abstract cosine >= 0.8)) AND year_diff <= 2. Scans
+only SINGLETON included rows (not already in a Phase 1 group), blocked by
+shared-author surname for tractability.
+
+**MorphBPE**: confirmed by hand that title_sim is 0.667 (char-level) / 0.333
+(word-Jaccard) for the two MorphBPE titles — well under 0.85 by any
+reasonable title metric, so the general rule genuinely would not catch it.
+Applied as a named, user-confirmed exception
+(`MANUAL_FUZZY_MERGE_PAIRS`) rather than lowering the threshold to fit one
+case — the general rule stays conservative for everything else. The merge
+correctly extended an *existing* Phase 1 group (one of the two MorphBPE S2
+records already exact-title-matched an ACL copy), so the result is one
+3-member group, not two separate 2-member groups.
+
+**General rule caught 4 more real merges** (all verified correct by hand):
+SemToken (Modeling/Models), MANTa (word-order swap), "Tokens with Meaning"
+(one S2 record is an abstract-less duplicate crawl of the other — common S2
+artifact), and a genomic-tokenizer paper (pure case difference). Flagged
+separately: the genomic-tokenizer paper's title uses "genomic," which isn't
+a substring of "genome" — the Phase 1 hard-veto term list — so it slipped
+past the domain-hard veto that should have excluded it (genome/protein
+papers are out of scope regardless of LLM framing, per the 2026-10-06
+hard/soft veto-tier decision). Left in rather than re-running collection at
+this point in the timeline; noted as a known topic-boundary gap for
+WRITEUP.md's limitations, affecting at most 2 rows / ~1 paper.
+
+**One false merge caught and fixed before it reached the manifest**: two
+different YEARS' workshop proceedings volumes ("Proceedings of the First
+Workshop on Subword and Character Level Models in NLP," 2017, vs
+"...Second Workshop...," 2018) scored title_sim=0.855 with 3 "shared
+authors" — which were actually the workshops' overlapping organizing-
+committee names (ACL bib `@proceedings` entries have no real "author" field,
+so my parser's existing `author-or-editor` fallback, see the earlier
+brace-delimited-field bug entry, legitimately returns editor/chair names
+here — there's no paper-author field to prefer). Added a guard: any pair
+where either title starts with "Proceedings of" is skipped before scoring,
+with a regression test. This generalizes to a known, undocumented-until-now
+gap: `@proceedings` front-matter entries can enter the corpus as if they
+were papers at all (not just in the fuzzy tier) — not fully audited/purged
+given the time remaining; noted as a WRITEUP.md limitation.
+
+Final: 5 automated fuzzy merges + 1 manual (MorphBPE) = 6 total, all listed
+with their scores in `dedup_audit.md`'s "Fuzzy-tier merges applied" section
+for review. `chunks.jsonl` and all three index metadata files
+(`bm25`, `bge_small`, `specter`) were patched in place (canonical_paper_id
+column only — embeddings/BM25 structures untouched, no re-embedding needed)
+so retrieval-time diversification actually reflects these merges.
+
+## 2026-10-07 — Phase 5: embedding model comparison (results + recommendation)
+
+All four configs run with the new diversification (dedup ON), k=5, 29
+answerable questions, hybrid = BM25 + bge-small via Reciprocal Rank Fusion
+(RRF, rrf_k=60 — chosen over a raw score blend because BM25 and cosine
+scores aren't on comparable scales; RRF only needs each ranking's order).
+
+**Overall:**
+
+| Config | Recall@5 | MRR | dup_rate@5 | latency p50/p95 (ms) | index size |
+|---|---|---|---|---|---|
+| bge-small | 0.276 | 0.240 | 0.186 | 17.5 / 21.2 | 51.0 MB |
+| SPECTER | 0.103 | 0.138 | 0.097 | 31.1 / 37.4 | 101.9 MB |
+| BM25 | 0.431 | 0.389 | 0.200 | 192.6 / 253.3 | 28.3 MB |
+| **Hybrid (BM25+bge-small)** | **0.569** | **0.507** | 0.200 | 305.9 / 390.1 | 79.3 MB (both) |
+
+**By question type (Recall@5 / MRR):**
+
+| Type | bge-small | SPECTER | BM25 | Hybrid |
+|---|---|---|---|---|
+| specific_lookup (n=14) | 0.357 / 0.321 | 0.143 / 0.143 | 0.643 / 0.586 | **0.714 / 0.661** |
+| multi_paper (n=8) | 0.125 / 0.150 | 0.125 / 0.250 | 0.188 / 0.292 | 0.188 / 0.312 |
+| follow_up (n=7) | 0.286 / 0.179 | **0.000 / 0.000** | 0.286 / 0.107 | **0.714 / 0.421** |
+
+**Indexing/embedding time** (from earlier entries, CPU-only): bge-small 79
+min (7.3 chunks/s), SPECTER 127 min (4.6 chunks/s), BM25 1.1s. SPECTER costs
+~60% longer to index for a model that performs *worse* on this task — see
+below for why.
+
+**SPECTER and short queries** (flagged per explicit request, since this
+explains the result rather than just reporting it): SPECTER is trained via
+citation-prediction — its embedding objective pulls a paper's (title +
+[SEP] + abstract) close to papers it cites, using full academic-register
+text on both sides of every training pair. Our queries are short,
+conversational natural-language QUESTIONS ("What vocabulary size did...",
+"How does that compare to..."), structurally nothing like what SPECTER was
+trained to embed well. **follow_up questions — the shortest, most
+pronoun-dependent queries in the eval set — are where this shows up
+starkest: SPECTER scores 0.0 Recall@5, a complete failure**, while even
+plain BM25 (lexical overlap, no semantic understanding at all) gets 0.286 on
+the same questions. SPECTER's relative strength is still visible on
+multi_paper questions (ties bge-small, beats it on MRR) — these tend to be
+longer, more descriptive queries closer to SPECTER's training distribution.
+Conclusion: SPECTER is the wrong tool for a conversational RAG query
+interface specifically; it would likely be a better choice for a
+paper-to-paper similarity/recommendation feature, which is closer to what it
+was trained for — out of scope here, but worth the distinction for
+WRITEUP.md.
+
+**Recommendation: hybrid (BM25 + bge-small via RRF).** Wins Recall@5/MRR
+overall and in 2 of 3 question-type breakdowns outright (ties on
+multi_paper), at the cost of being the slowest config (306ms p50) since it
+runs both a dense and a lexical search per query — still well under any
+interactive-latency concern for a CLI chatbot. The corpus's exact-terminology
+density (SentencePiece, fertility, specific numbers) is exactly where BM25
+earns its keep, matching the brief's own hint about this domain; bge-small
+recovers the cases BM25's literal matching misses (paraphrased queries,
+follow-ups needing semantic continuity). dup_rate@5 is identical (0.200)
+between BM25 and hybrid since RRF ranking doesn't change which PAPERS are
+present, only reorders among them — diversification is applied identically
+after fusion.
+
+**Not pursued, noted for WRITEUP.md limitations**: a cross-encoder reranker
+(brief's "optional, if time permits") — out of scope given the remaining
+time budget; the hybrid RRF result is already a clear, defensible
+recommendation without it.

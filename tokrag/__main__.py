@@ -37,11 +37,20 @@ def cmd_dedup(args: argparse.Namespace) -> None:
 
 
 def cmd_eval(args: argparse.Namespace) -> None:
-    from tokrag.eval.runner import run_dense_eval
-
-    result = run_dense_eval(args.index, args.model, k=args.k, use_diversify=args.diversify, use_gold_rewrite=args.gold_rewrite)
     import json
 
+    from tokrag.eval.runner import BM25Searcher, DenseSearcher, HybridSearcher, run_eval
+
+    mode = "new" if args.diversify else "none"
+    if args.retrieval == "bm25":
+        searcher = BM25Searcher()
+    elif args.retrieval == "hybrid":
+        dense = DenseSearcher(args.index, args.model)
+        searcher = HybridSearcher(dense, BM25Searcher())
+    else:
+        searcher = DenseSearcher(args.index, args.model)
+
+    result = run_eval(searcher, k=args.k, diversify_mode=mode, use_gold_rewrite=args.gold_rewrite)
     print(json.dumps(result, indent=2))
 
 
@@ -70,11 +79,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_dedup = sub.add_parser("dedup", help="assign canonical ids, flag surveys, write the false-merge audit")
     p_dedup.set_defaults(func=cmd_dedup)
 
-    p_eval = sub.add_parser("eval", help="run the evaluation set against a dense index")
-    p_eval.add_argument("--index", default="bge_small", help="dense index name (see data/index/)")
-    p_eval.add_argument("--model", default="BAAI/bge-small-en-v1.5", help="embedding model matching the index")
+    p_eval = sub.add_parser("eval", help="run the evaluation set against a retrieval config")
+    p_eval.add_argument("--retrieval", default="dense", choices=["dense", "bm25", "hybrid"], help="retrieval backend")
+    p_eval.add_argument("--index", default="bge_small", help="dense index name, for --retrieval dense/hybrid (see data/index/)")
+    p_eval.add_argument("--model", default="BAAI/bge-small-en-v1.5", help="embedding model matching --index")
     p_eval.add_argument("--k", type=int, default=5)
-    p_eval.add_argument("--diversify", action="store_true", help="apply Phase 4 dedup diversification (cap 1 chunk/paper + survey demotion)")
+    p_eval.add_argument("--diversify", action="store_true", help="apply Phase 4 dedup diversification (collapse near-dup chunks, cap 2/paper, demote surveys)")
     p_eval.add_argument("--gold-rewrite", action="store_true", help="use each follow-up's gold standalone rewrite instead of the raw question")
     p_eval.set_defaults(func=cmd_eval)
 

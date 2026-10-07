@@ -1,22 +1,23 @@
-"""Runs eval/questions.jsonl against a dense-index retrieval configuration
-and computes Recall@5, MRR, and duplicate-rate@5 — with and without Phase 4's
-diversification (cap 1 chunk/paper + survey demotion), to measure dedup's
-before/after impact per the brief.
+"""Runs eval/questions.jsonl against a retrieval configuration (dense or
+BM25) and computes Recall@5, MRR, and duplicate-rate@5 — for three
+diversification modes (none / cap1_naive / new, see dedup/diversify.py), per
+the brief's before/after dedup measurement. Supports a per-question-type
+breakdown and a gold-standalone-rewrite mode for follow-ups.
 """
 
 from __future__ import annotations
 
 import csv
 import json
+from collections import defaultdict
 
 from tokrag.config import MANIFEST_PATH, PROJECT_ROOT
-from tokrag.dedup.diversify import diversify as diversify_fn
+from tokrag.dedup.diversify import diversify, diversify_cap1_naive
 from tokrag.eval import metrics
 from tokrag.index.chunks import load_chunks
-from tokrag.index.dense import load_dense_index, search as dense_search
 
 QUESTIONS_PATH = PROJECT_ROOT / "eval" / "questions.jsonl"
-OVERFETCH_K = 30  # retrieve more than k so diversification has room to drop duplicates/surveys
+OVERFETCH_K = 50
 
 
 def load_questions() -> list:
@@ -24,67 +25,183 @@ def load_questions() -> list:
         return [json.loads(line) for line in f]
 
 
-def load_survey_group_ids() -> set:
-    """Returns the chunk-metadata `canonical_paper_id` values (group id, or a
-    singleton's own `source__source_id` key — matching how chunks.jsonl was
-    built in Phase 2) for every row flagged as a survey. NOT the same as
-    Phase 4's `canonical_id` column, which names one representative ROW
-    within a group rather than the group itself."""
+def _load_manifest_rows() -> list:
     with MANIFEST_PATH.open(encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
-    ids = set()
+        return list(csv.DictReader(f))
+
+
+def load_survey_group_ids() -> set:
+    """Chunk-metadata `canonical_paper_id` values (group id, or a singleton's
+    own `source__source_id` key) for every row flagged as a survey — NOT
+    Phase 4's `canonical_id` column, which names one representative row
+    within a group rather than the group itself."""
+    rows = _load_manifest_rows()
+    return {r["candidate_group_id"] or f"{r['source']}__{r['source_id']}" for r in rows if r.get("doc_type") == "survey"}
+
+
+def load_canonical_ids() -> dict:
+    """group id -> Phase 4's chosen canonical representative row's paper_id,
+    for collapse_near_duplicate_chunks' "prefer the canonical copy" rule."""
+    rows = _load_manifest_rows()
+    out = {}
     for r in rows:
-        if r.get("doc_type") == "survey":
-            ids.add(r["candidate_group_id"] or f"{r['source']}__{r['source_id']}")
-    return ids
+        gid = r["candidate_group_id"]
+        if gid and r.get("canonical_id"):
+            out[gid] = r["canonical_id"]
+    return out
 
 
-def run_dense_eval(index_name: str, model_name: str, k: int = 5, use_diversify: bool = False, use_gold_rewrite: bool = False) -> dict:
-    from sentence_transformers import SentenceTransformer
+class DenseSearcher:
+    def __init__(self, index_name: str, model_name: str):
+        from sentence_transformers import SentenceTransformer
 
-    embeddings, meta = load_dense_index(index_name)
+        from tokrag.index.dense import load_dense_index
+
+        self.embeddings, self.meta = load_dense_index(index_name)
+        self.model = SentenceTransformer(model_name)
+
+    def search(self, query: str, k: int) -> list:
+        from tokrag.index.dense import search as dense_search
+
+        q_emb = self.model.encode([query], convert_to_numpy=True, normalize_embeddings=True)[0]
+        return [i for i, _score in dense_search(q_emb, self.embeddings, k=k)]
+
+
+class HybridSearcher:
+    """BM25 + a dense searcher, combined via Reciprocal Rank Fusion (RRF) —
+    chosen over a raw score-weighted blend because BM25 and cosine-similarity
+    scores aren't on comparable scales; RRF only needs each list's RANKING,
+    sidestepping that entirely. Tokenizer research is full of exact
+    terminology ("SentencePiece," "fertility") BM25 is naturally good at,
+    which motivates combining it with a dense model rather than replacing it.
+    """
+
+    def __init__(self, dense_searcher, bm25_searcher, rrf_k: int = 60):
+        self.dense = dense_searcher
+        self.bm25 = bm25_searcher
+        self.rrf_k = rrf_k
+        self.meta = dense_searcher.meta  # same chunk ordering/index for both
+
+    def search(self, query: str, k: int) -> list:
+        # Overfetch both rankings generously so RRF has enough to fuse before truncating to k.
+        fetch_k = max(k * 4, 50)
+        dense_idxs = self.dense.search(query, fetch_k)
+        bm25_idxs = self.bm25.search(query, fetch_k)
+
+        scores: dict = defaultdict(float)
+        for rank, idx in enumerate(dense_idxs, start=1):
+            scores[idx] += 1.0 / (self.rrf_k + rank)
+        for rank, idx in enumerate(bm25_idxs, start=1):
+            scores[idx] += 1.0 / (self.rrf_k + rank)
+
+        ranked = sorted(scores.keys(), key=lambda i: -scores[i])
+        return ranked[:k]
+
+
+class BM25Searcher:
+    def __init__(self):
+        from tokrag.index.bm25 import load_bm25_index
+
+        self.bm25, self.meta = load_bm25_index()
+
+    def search(self, query: str, k: int) -> list:
+        from tokrag.index.bm25 import search as bm25_search
+
+        return [i for i, _score in bm25_search(self.bm25, query, k=k)]
+
+
+def _diversify_mode_fn(mode: str, k: int, survey_group_ids: set, canonical_ids: dict):
+    if mode == "none":
+        return lambda retrieved: retrieved[:k]
+    if mode == "cap1_naive":
+        return lambda retrieved: diversify_cap1_naive(retrieved, k=k, survey_group_ids=survey_group_ids)
+    if mode == "new":
+        return lambda retrieved: diversify(retrieved, k=k, survey_group_ids=survey_group_ids, canonical_ids=canonical_ids, max_per_group=2)
+    raise ValueError(f"unknown diversify mode: {mode}")
+
+
+def run_eval(searcher, k: int = 5, diversify_mode: str = "none", use_gold_rewrite: bool = False) -> dict:
+    """Returns overall metrics plus a per-question-type breakdown and
+    query-latency stats (search time only, excludes model load)."""
+    import time
+
     chunks = load_chunks()
-    assert len(chunks) == len(meta), "chunks.jsonl and dense index metadata are out of sync"
+    assert len(chunks) == len(searcher.meta), "chunks.jsonl and index metadata are out of sync"
 
-    model = SentenceTransformer(model_name)
-    survey_group_ids = load_survey_group_ids() if use_diversify else set()
+    survey_group_ids = load_survey_group_ids()
+    canonical_ids = load_canonical_ids()
+    apply_diversify = _diversify_mode_fn(diversify_mode, k, survey_group_ids, canonical_ids)
+
     questions = load_questions()
-
-    recall_results = []
-    dup_rates = []
-    n_unanswerable = 0
+    by_type: dict = {}  # type -> {"recall_results": [...], "dup_rates": [...]}
+    latencies_ms: list = []
 
     for q in questions:
         if q["type"] == "unanswerable":
-            n_unanswerable += 1
             continue
-
         query_text = q["question"]
         if use_gold_rewrite and q.get("gold_standalone_rewrite"):
             query_text = q["gold_standalone_rewrite"]
 
-        q_emb = model.encode([query_text], convert_to_numpy=True, normalize_embeddings=True)[0]
-        hits = dense_search(q_emb, embeddings, k=OVERFETCH_K)
-        retrieved = [{**meta[i], "text": chunks[i]["text"]} for i, _score in hits]
+        t0 = time.perf_counter()
+        idxs = searcher.search(query_text, OVERFETCH_K)
+        retrieved = [{**chunks[i], **searcher.meta[i]} for i in idxs]
+        retrieved = apply_diversify(retrieved)
+        latencies_ms.append((time.perf_counter() - t0) * 1000)
 
-        if use_diversify:
-            retrieved = diversify_fn(retrieved, k=k, survey_group_ids=survey_group_ids)
-        else:
-            retrieved = retrieved[:k]
-
-        dup_rates.append(metrics.duplicate_rate_at_k(retrieved, k=k))
+        bucket = by_type.setdefault(q["type"], {"recall_results": [], "dup_rates": []})
+        bucket["dup_rates"].append(metrics.duplicate_rate_at_k(retrieved, k=k))
         golds = [(g["group_id"], g["supporting_span"]) for g in q["gold"]]
-        recall_results.append((retrieved, golds))
+        bucket["recall_results"].append((retrieved, golds))
+
+    latencies_ms.sort()
+    n_lat = len(latencies_ms)
+    latency_stats = {
+        "mean_ms": round(sum(latencies_ms) / n_lat, 2) if n_lat else 0.0,
+        "p50_ms": round(latencies_ms[n_lat // 2], 2) if n_lat else 0.0,
+        "p95_ms": round(latencies_ms[min(n_lat - 1, int(n_lat * 0.95))], 2) if n_lat else 0.0,
+    }
+
+    def _summarize(bucket):
+        return {
+            "n": len(bucket["recall_results"]),
+            "recall_at_k": round(metrics.mean_recall_at_k_multi(bucket["recall_results"], k=k), 4),
+            "mrr": round(metrics.mean_reciprocal_rank_multi(bucket["recall_results"]), 4),
+            "duplicate_rate_at_k": round(sum(bucket["dup_rates"]) / len(bucket["dup_rates"]), 4) if bucket["dup_rates"] else 0.0,
+        }
+
+    all_recall_results = [r for b in by_type.values() for r in b["recall_results"]]
+    all_dup_rates = [d for b in by_type.values() for d in b["dup_rates"]]
 
     return {
-        "index": index_name,
-        "model": model_name,
-        "diversify": use_diversify,
-        "gold_rewrite": use_gold_rewrite,
+        "diversify_mode": diversify_mode,
         "k": k,
-        "n_answerable": len(recall_results),
-        "n_unanswerable": n_unanswerable,
-        "recall_at_k": round(metrics.mean_recall_at_k_multi(recall_results, k=k), 4),
-        "mrr": round(metrics.mean_reciprocal_rank_multi(recall_results), 4),
-        "duplicate_rate_at_k": round(sum(dup_rates) / len(dup_rates), 4) if dup_rates else 0.0,
+        "gold_rewrite": use_gold_rewrite,
+        "overall": {
+            "n": len(all_recall_results),
+            "recall_at_k": round(metrics.mean_recall_at_k_multi(all_recall_results, k=k), 4),
+            "mrr": round(metrics.mean_reciprocal_rank_multi(all_recall_results), 4),
+            "duplicate_rate_at_k": round(sum(all_dup_rates) / len(all_dup_rates), 4) if all_dup_rates else 0.0,
+        },
+        "by_type": {t: _summarize(b) for t, b in sorted(by_type.items())},
+        "query_latency": latency_stats,
     }
+
+
+def index_size_mb(path) -> float:
+    from pathlib import Path
+
+    p = Path(path)
+    if p.is_file():
+        return round(p.stat().st_size / (1024 * 1024), 2)
+    total = sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
+    return round(total / (1024 * 1024), 2)
+
+
+def run_dense_eval(index_name: str, model_name: str, k: int = 5, use_diversify: bool = False, use_gold_rewrite: bool = False) -> dict:
+    """Back-compat convenience wrapper used by the CLI's `tokrag eval`."""
+    searcher = DenseSearcher(index_name, model_name)
+    mode = "new" if use_diversify else "none"
+    result = run_eval(searcher, k=k, diversify_mode=mode, use_gold_rewrite=use_gold_rewrite)
+    flat = {"index": index_name, "model": model_name, **result["overall"], "diversify_mode": mode, "k": k}
+    return flat
