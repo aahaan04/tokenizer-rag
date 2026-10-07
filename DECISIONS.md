@@ -266,3 +266,82 @@ scope for the time available). Equations: same — kept as whatever inline text
 
 Chunking: word count (not a real tokenizer) as a cheap proxy for token count,
 ~350 words/chunk with 50-word overlap, chunk index restarting per section.
+
+## 2026-10-06 — Dropped all-MiniLM-L6-v2 for a 512-token embedding model
+
+Measured actual chunk token lengths with the real `all-MiniLM-L6-v2` tokenizer
+(its *effective* limit is 256 — `SentenceTransformer.max_seq_length`, not the
+underlying BERT's raw 512 `model_max_length`, which is what you'd see if you
+only checked the tokenizer config). Result: p50=468, p95=724, p99=993,
+max=5869 tokens — 69.5% of chunks exceed 256 tokens, and 39% exceed even 512.
+
+Root cause isn't just "chunks are too long in words": 750 of 821 papers (91%)
+have at least one chunk over 512 tokens. Technical English alone runs higher
+BPE tokens/word than casual text, but the extreme tail (chunks in the
+thousands of tokens) comes from a few papers with CJK text or LaTeX-leakage
+in extraction, where whitespace-delimited "word count" doesn't bound token
+count at all (CJK has no inter-word spaces, so a 350-"word" chunk can be one
+enormous run of individual-character tokens).
+
+Decision: drop `all-MiniLM-L6-v2` from the Phase 5 comparison, use a
+512-token-capacity general-purpose model instead (`bge-small-en-v1.5`) — kept
+the 350-word chunk target as-is. Rationale ("less rework" test from the
+brief): re-chunking the whole corpus at ~200 words wouldn't fix the real
+problem (CJK/LaTeX-leak chunks would still blow past any word-count-based
+target, since the unit itself doesn't bound token count for those cases) and
+costs a full reparse; swapping the model is a planning-only change with no
+reprocessing. The p50/p95 chunk (468/724 tokens) still exceeds bge-small's
+512 limit at the p95 mark, so a meaningful tail is still silently truncated
+at embedding time — accepted and documented here rather than fixed, given the
+time budget. A real fix (token-aware chunking using the target model's own
+tokenizer) is a natural follow-up noted in WRITEUP.md's limitations, not
+attempted now.
+
+## 2026-10-06 — Checkpoint 2 fixes: parse accounting, ACL PDF quality
+
+User review of Checkpoint 2 caught a real reporting bug and asked for ACL PDF
+quality improvements, timeboxed to ~45 minutes:
+
+**Parse outcome accounting.** The original report double-counted: all 80
+"abstract_only" rows included the 26 that had no abstract either (true hard
+failures). Fixed to three mutually exclusive buckets (767 full_text / 54
+abstract_only / 26 no_text_not_indexed, summing to 847). The 26 hard failures
+are now written back into `manifest.csv` as `parse_status=no_text_not_indexed`
+instead of only existing in a parse report — anyone reading the manifest can
+see which rows aren't actually in the index.
+
+**ACL PDF extraction**, rewritten in `extract.py`:
+- Running header/footer removal: lines repeating verbatim across ≥40% of
+  pages (venue/proceedings lines PyMuPDF can't otherwise tell apart from body
+  text) are dropped, plus an explicit regex for "Proceedings of...", bare page
+  numbers, and copyright lines.
+- Numbered-heading pattern ("3 Method", "4.2 Results") added alongside the
+  existing keyword-heading match.
+- Font-size/bold heading detection via `page.get_text("dict")` (per-line font
+  size + bold flag), rescuing non-numbered, non-keyword headings a body-text
+  heuristic alone would miss.
+
+Verified on the SentencePiece ACL PDF before/after: 4 sections -> 18, with
+real subsections (Library Design, Lossless Tokenization) now correctly split
+out instead of lumped into one 2000+ character "Introduction" blob. Some
+front-matter noise remains (title/author/affiliation lines occasionally
+detected as mini-headings, since they're also bold/large-font) — harmless
+(small, correctly-placed fragments, not corrupted body content) and left as a
+known limitation rather than further tuned, given the timebox.
+
+Reran the full corpus: total_chunks went from 18,073 -> 28,285 (finer section
+splitting -> more, shorter chunks), and this *also* substantially improved the
+token-length problem from the entry above: against `bge-small-en-v1.5`'s
+tokenizer, p50 dropped from 468 -> 182 tokens, and the fraction exceeding 512
+tokens dropped from 39% -> 13.1%. The decision to use `bge-small-en-v1.5`
+instead of `all-MiniLM-L6-v2` stands regardless (that entry's CJK/LaTeX-leak
+root cause is unrelated to section-splitting granularity), but is now backed
+by a noticeably healthier distribution.
+
+**Clarification:** "chunks per paper" / "papers with >=1 chunk" stats are
+always keyed by `paper_id` (one row = one source's copy of one paper), not
+deduplicated by `candidate_group_id`. A paper found via arXiv, ACL, and S2 is
+3 rows, each independently fetched/parsed/chunked, each counted separately in
+these stats — consistent with the per-row fetching decision above. The
+unique-paper corpus-size figure (723) is the one metric that *does*
+deduplicate by group, and is reported separately for exactly this reason.

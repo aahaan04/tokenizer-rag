@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from tokrag.collect.manifest import read_manifest
+from tokrag.collect.manifest import read_manifest, write_manifest
 from tokrag.config import MANIFEST_PATH, PROCESSED_DIR
 from tokrag.parse import chunker, extract, fetch
 
@@ -20,7 +20,8 @@ MIN_USABLE_CHARS = 200  # extracted text shorter than this is treated as a faile
 
 
 def run(limit: int | None = None) -> dict:
-    rows = [r for r in read_manifest(MANIFEST_PATH) if r.included]
+    all_rows = read_manifest(MANIFEST_PATH)
+    rows = [r for r in all_rows if r.included]
     if limit:
         rows = rows[:limit]
 
@@ -28,12 +29,16 @@ def run(limit: int | None = None) -> dict:
     status = fetch.fetch_all(rows)
 
     chunks_out = []
+    # Three mutually exclusive buckets that sum to total_rows: full_text_parsed
+    # (extraction worked), abstract_only (extraction failed/unavailable but the
+    # abstract did its job), no_text_not_indexed (neither — zero chunks, not
+    # in the index, also written back into manifest.csv's parse_status column).
     report = {
         "total_rows": len(rows),
         "by_fetch_method": {},
         "full_text_parsed": 0,
         "abstract_only": 0,
-        "no_text_at_all": 0,
+        "no_text_not_indexed": 0,
         "total_chunks": 0,
     }
 
@@ -53,16 +58,19 @@ def run(limit: int | None = None) -> dict:
             if sum(len(t) for _, t in sections) < MIN_USABLE_CHARS:
                 sections = []  # extraction produced too little to be useful -> fall back
 
-        abstract_only = not sections
-        if abstract_only:
-            if row.abstract:
-                sections = [("Abstract", row.abstract)]
+        if sections:
+            parse_status = "full_text"
+            report["full_text_parsed"] += 1
+        elif row.abstract:
+            sections = [("Abstract", row.abstract)]
+            parse_status = "abstract_only"
             report["abstract_only"] += 1
         else:
-            report["full_text_parsed"] += 1
+            parse_status = "no_text_not_indexed"
+            report["no_text_not_indexed"] += 1
 
+        row.parse_status = parse_status
         if not sections:
-            report["no_text_at_all"] += 1
             continue
 
         for c in chunker.chunk_sections(sections):
@@ -74,7 +82,7 @@ def run(limit: int | None = None) -> dict:
                     "title": row.title,
                     "year": row.year,
                     "venue": row.venue,
-                    "abstract_only": abstract_only,
+                    "abstract_only": parse_status == "abstract_only",
                     "fetch_method": method,
                     **c,
                 }
@@ -87,5 +95,6 @@ def run(limit: int | None = None) -> dict:
 
     report["total_chunks"] = len(chunks_out)
     PARSE_REPORT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    write_manifest(MANIFEST_PATH, all_rows)  # persists parse_status per row
     print(json.dumps(report, indent=2))
     return report

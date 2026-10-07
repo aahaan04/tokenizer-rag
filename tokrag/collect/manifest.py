@@ -40,6 +40,10 @@ class Candidate:
     # external-id matching, similarity thresholds), not Phase 1's title hint.
     canonical_id: str = ""
     doc_type: str = ""  # "paper" or "survey"
+    # Filled in by Phase 2 parsing: "full_text", "abstract_only", or
+    # "no_text_not_indexed" (no full text AND no abstract -> zero chunks,
+    # excluded from the index). Blank until parse runs.
+    parse_status: str = ""
 
 
 MANIFEST_FIELDS = [f.name for f in dataclasses.fields(Candidate)]
