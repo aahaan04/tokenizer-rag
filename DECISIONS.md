@@ -380,14 +380,25 @@ A retrieved chunk counts as a **hit** for a gold-labeled question if BOTH:
    the paper; Phase 4's job is to stop 3 rows of the *same* paper crowding
    out 3 *different* relevant papers in the top-5, not to penalize retrieval
    for the duplication existing in the first place.
-2. **Section match**: `normalize_section(chunk.section_title)` equals, or is a
-   substring of, `normalize_section(gold.section)` (normalize = lowercase,
-   strip leading section numbers and punctuation — the same chunk's section
-   can read "1 Introduction" from one extractor and "Introduction" from
-   another). A paper-level match in the wrong section is NOT a hit — gold
-   labels are at paper+section granularity specifically so chunking or
-   indexing changes don't silently inflate Recall@5 by rewarding "found the
-   right paper, wrong part."
+2. **Span match** (revised 2026-10-06, Checkpoint 3 review — originally this
+   was a section-title match, see below): the chunk's `text` contains the
+   gold `supporting_span`, normalized (lowercase, punctuation/whitespace
+   stripped so "119,547" matches "119547") — with a fuzzy fallback requiring
+   >=70% of the span's distinctive (4+ letter) words to appear in the chunk,
+   for cases where extraction reflows wording slightly. A paper-level match
+   with the wrong content is NOT a hit — gold labels carry a specific
+   supporting span exactly so a metrics change can't silently inflate
+   Recall@5 by rewarding "found the right paper, wrong part."
+
+   **Why not section-title match (original design)**: PDF section headings
+   are too noisy to gate scoring on — the font-size/keyword heuristic from
+   Phase 2 sometimes turns body sentences into spurious "headings" (see the
+   "How Good is Your Tokenizer?" example), so a real hit could score a miss
+   purely because the chunk's auto-detected section_title didn't normalize-
+   match the gold section string. The supporting span is pinned to actual
+   paper content, not an unreliable structural label, so it's a more robust
+   scoring signal. `section_title` is kept in chunk metadata for citation
+   display (Phase 6) but no longer participates in hit scoring.
 
 Consequence for the "duplicate rate in top-5" metric (Phase 4): computed
 *before* this definition's paper-match collapsing — i.e., it counts how many
@@ -396,3 +407,33 @@ in that same top-5, which is exactly the "3 versions of Paper A crowding the
 other 2 slots" case the brief's example illustrates. Recall@5/MRR use the hit
 definition above; the duplicate-rate metric is a separate count over the same
 top-5 list.
+
+## 2026-10-06 — Embedding speed: investigated and accepted, SPECTER launched
+
+bge-small-en-v1.5 took 4,757s (~79 min) for 34,779 chunks — 7.3 chunks/s,
+slower than hoped. Investigated two speedups on a 500-chunk benchmark:
+- `torch.set_num_threads(20)` (all cores, up from PyTorch's default of 14):
+  ~7% faster (37.1s vs 39.7s for the same batch). Modest, applied anyway
+  (now the default in `build_dense_index`).
+- Explicit pre-sorting chunks by length before batching: **no improvement**
+  (sentence-transformers' own `.encode()` already length-sorts/buckets
+  internally — confirmed by testing explicit pre-sorting against natural
+  order and seeing no gain). Not worth adding as separate logic.
+
+Verified `allenai-specter` loads via sentence-transformers and benchmarked it
+on 100 chunks: **5.57 chunks/s**, 768-dim, `max_seq_length=512` (matches our
+450-token chunk cap well). Estimated full-corpus time ≈ 104 min — slower than
+bge-small but far short of the feared "4+ hours" (SPECTER is a BERT-base
+model, ~3x bge-small's parameter count, but CPU throughput scaled closer to
+~1.7x slower in practice, not 3-4x).
+
+Given ~100 min is a real but tolerable wait, no further time was spent
+chasing bigger speedups (no FAISS/ONNX/quantization — out of scope for the
+time budget, and brute-force numpy search was already the deliberate choice
+for index *query* speed, separate from embedding speed). Added checkpointed
+resumability to `build_dense_index()` instead: progress is saved to
+`embeddings_partial.npy` + `progress.json` every 2,000 chunks, so a killed or
+interrupted run resumes rather than restarting — the actual risk worth
+engineering around for an hour-plus unattended run, not the embed speed
+itself. Launched the full SPECTER embedding in the background under this
+resumable path.
