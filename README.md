@@ -54,7 +54,7 @@ python -m tokrag chat
 ```
 
 **Expect poor retrieval/eval numbers in sample mode.** The 36-question eval
-set ([eval/questions.jsonl](tokrag/eval/questions.jsonl)) targets specific
+set ([eval/questions.jsonl](eval/questions.jsonl)) targets specific
 papers from the *full* corpus; a 30-paper sample almost certainly won't
 contain most of those papers, so `eval` will show near-zero Recall@5/MRR
 and `chat` will abstain on most questions. That's expected — sample mode
@@ -127,7 +127,7 @@ rewrite changes the query) before retrieval runs.
 | Real chat transcript (5+ turns, unedited) | [transcript.md](transcript.md) |
 | Failure analysis (3+ distinct cases) | [FAILURES.md](FAILURES.md) |
 | Chat eval results (abstention, groundedness, citation, follow-up recall) | [phase6_chat_eval_results.json](phase6_chat_eval_results.json) |
-| Eval question set | [tokrag/eval/questions.jsonl](tokrag/eval/questions.jsonl) |
+| Eval question set | [eval/questions.jsonl](eval/questions.jsonl) |
 | Pipeline code | [tokrag/collect/](tokrag/collect/), [tokrag/parse/](tokrag/parse/), [tokrag/index/](tokrag/index/), [tokrag/dedup/](tokrag/dedup/), [tokrag/eval/](tokrag/eval/), [tokrag/chat/](tokrag/chat/) |
 | Tests | [tests/](tests/) (`python -m pytest`) |
 
