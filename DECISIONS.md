@@ -203,3 +203,66 @@ LLMs, per the user's explicit call-out. Split `OFF_TOPIC_DOMAIN_TERMS` into
 `OFF_TOPIC_DOMAIN_SOFT_TERMS` (speech, music — still rescued by an explicit
 LLM-context mention) and `OFF_TOPIC_DOMAIN_HARD_TERMS` (molecular, drug-like,
 protein/DNA/genome — never rescued, excluded regardless of framing).
+
+## 2026-10-06 — Corpus size is reported as unique papers, not included rows
+
+822 included rows ≠ 723 unique papers — 197 of those rows are cross-source
+duplicates of 98 other included rows (same paper, found via arXiv/S2/ACL,
+kept as separate linked rows per the dedup-link fix above). WRITEUP.md and any
+"corpus size" claim use the unique-paper count. `manifest.py` gained
+`write_manifest_summary()`, called automatically at the end of `collect()` and
+`add_arxiv_version_pairs()`, writing `manifest_summary.md` with this
+breakdown so it can't silently go stale relative to `manifest.csv`.
+
+## 2026-10-06 — Added a small sample of real arXiv multi-version duplicates
+
+Collection's cross-source groups (preprint vs. ACL/S2 record) don't cover the
+brief's first-named duplicate case: the same paper at multiple arXiv versions.
+arXiv's search/id_list API only ever returns a paper's current version, so
+collection can't produce this case by itself. Added
+`pipeline.add_arxiv_version_pairs()`: for a sample of included, multi-version
+arXiv papers (35 candidates had version > v1; took 25, preferring v3+ over v2
+as more interesting dedup cases), fetches each one's v1 text via
+`arxiv.fetch_by_ids(["<id>v1"])` and adds it as a new row sharing the existing
+row's `candidate_group_id`. Idempotent (skips a paper if its v1 row is already
+present). Three of the six canaries (Sennrich, CANINE, ByT5) now have both a
+cross-source group and a version pair in the same group. Unique-paper count is
+unaffected (723, unchanged) since these rows join existing groups.
+
+## 2026-10-06 — Phase 2 parsing approach
+
+Decision: fetch and parse text **per row, not deduplicated by
+candidate_group_id**. A cross-source or multi-version duplicate pair only
+exists in the corpus so Phase 4 can measure retrieval-level dedup impact
+("duplicate rate in top-5," before/after Recall@5); that requires each
+duplicate row to actually be indexable with its own chunks, not collapsed to
+one shared text.
+
+Per-row fetch priority: arXiv HTML (`arxiv.org/html/<id>`, native LaTeXML
+rendering — clean section structure) → arXiv PDF fallback → ACL Anthology PDF
+(`<source_url>.pdf`, standard pattern) → Semantic Scholar open-access PDF
+(looked up from already-cached S2 search responses, no extra API calls) → if
+none available, the abstract alone becomes the paper's one "Abstract" chunk
+(flagged `abstract_only: true` in chunks.jsonl, so eval/retrieval code can
+treat it differently if needed).
+
+Section-header detection: HTML uses the actual `<h1>-<h4>` tags (reliable,
+since arXiv's HTML is LaTeXML-generated with real heading elements). PDF uses
+a regex heuristic matching common section-name lines (Introduction, Method,
+Results, ...) under 60 characters — crude, will miss non-standard headers and
+occasionally misfire, but cheap and "good enough" per the time budget. Known
+noise: PDF extraction sometimes captures a page header/footer (venue/
+proceedings line) as the start of the first section, since PyMuPDF doesn't
+distinguish body text from running headers. Not fixed given time constraints.
+
+References: dropped entirely — everything from a "References"/"Bibliography"
+heading onward is discarded (both extractors). Figure/table captions: kept
+inline, since they're ordinary text nodes in both the HTML and PDF text
+stream — not specially tagged or separated. Tables: kept as whatever
+linearized/reading-order text the extractor already produces; not specially
+reconstructed into rows/columns (would need real table detection, out of
+scope for the time available). Equations: same — kept as whatever inline text
+(LaTeX source in HTML, or often-garbled glyph text in PDF) comes through.
+
+Chunking: word count (not a real tokenizer) as a cheap proxy for token count,
+~350 words/chunk with 50-word overlap, chunk index restarting per section.

@@ -15,7 +15,8 @@ def cmd_collect(args: argparse.Namespace) -> None:
 
 
 def cmd_parse(args: argparse.Namespace) -> None:
-    raise NotImplementedError("parse: lands in Phase 2")
+    from tokrag.parse.pipeline import run
+    run(limit=args.limit)
 
 
 def cmd_index(args: argparse.Namespace) -> None:
@@ -39,6 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_collect.set_defaults(func=cmd_collect)
 
     p_parse = sub.add_parser("parse", help="parse and chunk collected papers")
+    p_parse.add_argument("--limit", type=int, default=None, help="only process the first N included rows (for a quick test)")
     p_parse.set_defaults(func=cmd_parse)
 
     p_index = sub.add_parser("index", help="build BM25 / dense / hybrid indexes")
