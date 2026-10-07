@@ -98,3 +98,49 @@ def mean_duplicate_rate_at_k(all_retrieved: list[list[dict]], k: int = 5) -> flo
     if not all_retrieved:
         return 0.0
     return sum(duplicate_rate_at_k(r, k) for r in all_retrieved) / len(all_retrieved)
+
+
+# --- Multi-gold scoring, for multi_paper questions (see the 2026-10-06
+# DECISIONS.md "Eval scoring definitions, pinned down before running Phase 5"
+# entry). `golds` is a list of (gold_group_id, gold_span) pairs — every
+# question in eval/questions.jsonl stores gold this way, even single-gold
+# ones (as a 1-item list), so these are the functions the eval runner
+# actually calls; recall_at_k/reciprocal_rank above cover the single-gold
+# case directly and stay as the simpler building block + their own tests.
+
+
+def recall_at_k_multi(retrieved: list[dict], golds: list[tuple], k: int = 5) -> float:
+    """Recall@k for a question with 1+ gold (group_id, span) pairs: the
+    fraction of DISTINCT gold groups with at least one hit in the top-k.
+    A single-gold question scores 0.0 or 1.0, same as recall_at_k."""
+    if not golds:
+        return 0.0
+    top = retrieved[:k]
+    hit = sum(1 for gid, span in golds if any(is_hit(c, gid, span) for c in top))
+    return hit / len(golds)
+
+
+def reciprocal_rank_multi(retrieved: list[dict], golds: list[tuple]) -> float:
+    """MRR contribution for a question with 1+ gold pairs: reciprocal rank of
+    the FIRST chunk that hits ANY gold pair (not the average over golds)."""
+    if not golds:
+        return 0.0
+    for i, c in enumerate(retrieved, start=1):
+        if any(is_hit(c, gid, span) for gid, span in golds):
+            return 1.0 / i
+    return 0.0
+
+
+def mean_recall_at_k_multi(results: list[tuple[list[dict], list]], k: int = 5) -> float:
+    """Mean over questions, each (retrieved, golds) — golds already filtered
+    to answerable questions by the caller (unanswerables are scored on
+    abstention, not Recall/MRR; see DECISIONS.md)."""
+    if not results:
+        return 0.0
+    return sum(recall_at_k_multi(r, g, k) for r, g in results) / len(results)
+
+
+def mean_reciprocal_rank_multi(results: list[tuple[list[dict], list]]) -> float:
+    if not results:
+        return 0.0
+    return sum(reciprocal_rank_multi(r, g) for r, g in results) / len(results)

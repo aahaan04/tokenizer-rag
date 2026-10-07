@@ -3,9 +3,13 @@ from tokrag.eval.metrics import (
     is_hit,
     mean_duplicate_rate_at_k,
     mean_recall_at_k,
+    mean_recall_at_k_multi,
     mean_reciprocal_rank,
+    mean_reciprocal_rank_multi,
     recall_at_k,
+    recall_at_k_multi,
     reciprocal_rank,
+    reciprocal_rank_multi,
 )
 
 
@@ -76,3 +80,41 @@ def test_mean_functions_average_across_questions():
 
     all_retrieved = [[_chunk("grpA", "x"), _chunk("grpA", "y")], [_chunk("grpB", "z")]]
     assert mean_duplicate_rate_at_k(all_retrieved, k=5) == (0.5 + 0.0) / 2
+
+
+def test_recall_at_k_multi_is_fraction_of_gold_groups_hit():
+    # Multi-paper question with 2 gold groups; only one is found in top-5.
+    retrieved = [_chunk("grpA", "fact one here"), _chunk("grpX", "irrelevant")]
+    golds = [("grpA", "fact one"), ("grpB", "fact two")]
+    assert recall_at_k_multi(retrieved, golds, k=5) == 0.5
+
+
+def test_recall_at_k_multi_both_golds_hit_scores_one():
+    retrieved = [_chunk("grpA", "fact one here"), _chunk("grpB", "fact two here")]
+    golds = [("grpA", "fact one"), ("grpB", "fact two")]
+    assert recall_at_k_multi(retrieved, golds, k=5) == 1.0
+
+
+def test_recall_at_k_multi_single_gold_matches_recall_at_k():
+    retrieved = [_chunk("grpX", "nope"), _chunk("grp1", "the answer here")]
+    golds = [("grp1", "the answer")]
+    assert recall_at_k_multi(retrieved, golds, k=5) == recall_at_k(retrieved, "grp1", "the answer", k=5)
+
+
+def test_recall_at_k_multi_empty_golds_is_zero():
+    assert recall_at_k_multi([_chunk("grpA", "x")], [], k=5) == 0.0
+
+
+def test_reciprocal_rank_multi_uses_first_hit_of_any_gold():
+    retrieved = [_chunk("grpX", "irrelevant"), _chunk("grpB", "fact two here"), _chunk("grpA", "fact one here")]
+    golds = [("grpA", "fact one"), ("grpB", "fact two")]
+    assert reciprocal_rank_multi(retrieved, golds) == 0.5  # grpB hit at rank 2, first overall hit
+
+
+def test_mean_multi_functions_average_across_questions():
+    results_recall = [
+        ([_chunk("grpA", "fact one here"), _chunk("grpB", "fact two here")], [("grpA", "fact one"), ("grpB", "fact two")]),
+        ([_chunk("grpX", "nope")], [("grpC", "fact three")]),
+    ]
+    assert mean_recall_at_k_multi(results_recall, k=5) == (1.0 + 0.0) / 2
+    assert mean_reciprocal_rank_multi(results_recall) == (1.0 + 0.0) / 2
