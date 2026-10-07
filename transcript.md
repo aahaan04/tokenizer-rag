@@ -1,130 +1,106 @@
-# Sample chat transcript
+# Chat transcript
 
-A real 5-turn session run through the actual bot (`Chatbot` in
-[tokrag/chat/chatbot.py](tokrag/chat/chatbot.py), hybrid BM25+bge-small
-retrieval with Phase 4 diversification), generated with
-`reasoning_effort="low"` and `temperature=0`. Outputs below are **unedited**
-— including Turn 2's abstention and Turn 3's citation error, both discussed
-honestly rather than cleaned up. See [FAILURES.md](FAILURES.md) Case 3 for
-the Turn 3 issue and [DECISIONS.md](DECISIONS.md) for the Turn 2 abstention
-class (retrieval miss).
+One real 5-turn session through the CLI (`python -m tokrag chat`: hybrid
+BM25 + bge-small retrieval, Phase 4 diversification, `openai/gpt-oss-120b`
+for answers, `openai/gpt-oss-20b` for query rewriting). Run once, on the
+first attempt, after the citation-parser fix in DECISIONS.md. Questions
+were piped to stdin, so the CLI doesn't echo them; each `You:` line below
+shows the piped question, followed by the CLI's output **verbatim**,
+including the `[rewritten query: ...]` lines it prints for every turn after
+the first. An earlier session, kept for its retrieval-miss follow-up, is in
+[transcript_earlier.md](transcript_earlier.md).
 
 ---
 
 ## Turn 1 — specific lookup
 
-**Q:** What vocabulary size did Chizhov et al. use in the EN-DE machine
-translation experiments in "BPE Gets Picky"?
+**You:** Which target vocabulary size did the AraToken paper pick for its base experiments?
 
-**A:** In the EN‑DE experiments reported in "BPE Gets Picky," Chizhov et al.
-trained models with three total vocabulary sizes: 16 384, 32 768 and
-65 536 tokens (i.e., 16 k, 32 k and 64 k) [1].
+```
+Bot: The AraToken paper trained its tokenizers with a target vocabulary size of **80,000 tokens for the base experiments**【1】.
 
-**Citations:**
-- [1] BPE Gets Picky: Efficient Vocabulary Refinement During Tokenizer Training (2024), section: Larger vocabularies.
-
-**Abstained:** false | **top retrieval score:** 0.0323
+Sources:
+  [1] AraToken: Optimizing Arabic Tokenization with Normalization Pipeline and Language Extension for Qwen3 (2025), section: Vocabulary Size
+```
 
 ---
 
-## Turn 2 — follow-up (shows the logged query rewrite)
+## Turn 2 — sets up the follow-up
 
-**Q:** How does that compare with WordPiece tokenization quality
-plateauing, per Beinborn and Pinter?
+**You:** What is BPE-Dropout, and how does it change BPE segmentation during training?
 
-**Logged rewrite** (fed to retrieval instead of the raw follow-up — this is
-exactly what gets written to the chat log and is what the query-rewriter
-diagnosis in DECISIONS.md is about):
+```
+  [rewritten query: What is BPE‑Dropout, and how does it modify the Byte‑Pair Encoding (BPE) segmentation process during model training?]
 
-> How do the vocabulary sizes (16 384, 32 768, and 65 536 tokens) used by
-> Chizhov et al. in their EN‑DE machine‑translation experiments compare to
-> the vocabulary size at which WordPiece tokenization quality plateaus, as
-> reported by Beinborn and Pinter?
+Bot: BPE‑Dropout is a subword‑regularization technique that makes the normally deterministic Byte‑Pair Encoding (BPE) tokenizer stochastic.  Instead of always applying every merge rule in the learned merge table, BPE‑Dropout randomly discards each merge operation with a probability p at every merge step; the remaining merges are applied as usual.  Because some merges are dropped, the same word can be segmented in different ways across training iterations (e.g., “newest” may become “ne w e st” or “ne west”), giving the model exposure to multiple possible tokenizations and improving robustness to noise and segmentation errors【1†L1-L7】【2†L1-L5】.
 
-**A:** The corpus doesn't contain enough information to answer this.
+Sources:
+  [1] Bridging the Gap between Subword and Character Segmentation in Pretrained Language Models (2023), section: Subword Regularization For Bpe
+  [2] BPE-Dropout: Simple and Effective Subword Regularization (2020), section: Introduction
+```
 
-**Abstained:** true (`model_self_assessment`) | **top retrieval score:** 0.0268
-
-*Honest note*: the rewrite correctly resolved "that" and named both papers
-— the abstention here is a genuine **retrieval miss** (Beinborn & Pinter's
-specific plateau figure wasn't in the top-5 for this rewritten query), not
-a rewriter or generation failure. This is the same class of false
-abstention documented in DECISIONS.md's Checkpoint 6 diagnosis (8 of the
-original 10 false positives were retrieval misses, not abstention-logic
-errors) — included here deliberately rather than swapped for an easier
-question, since the transcript is unedited.
+*Note*: the model cited in the `【1†L1-L7】` format here. Before the fix
+logged in DECISIONS.md, the parser missed this format and no Sources list
+would have printed.
 
 ---
 
-## Turn 3 — multi-paper question
+## Turn 3 — follow-up ("how does that compare with WordPiece?")
 
-**Q:** What is the core trade-off of byte-level/character-level
-("tokenizer-free") models like ByT5 and CANINE compared to subword
-tokenization, and how does each paper address the cost side of it?
+**You:** How does that compare with WordPiece?
 
-**A:** The key trade‑off is that "tokenizer‑free" byte‑ or character‑level
-models eliminate vocabulary‑related bias and fertility disparity, but they
-represent text with many more symbols, so input sequences become 3–5×
-longer and the quadratic attention cost of the Transformer rises
-sharply【5】.
+```
+  [rewritten query: How does the subword‑regularization technique BPE‑Dropout (which introduces stochasticity into the deterministic Byte‑Pair Encoding tokenizer) compare to the WordPiece tokenization method used in models such as BERT?]
 
-*ByT5* (Jiang et al., 2022) argues that the standard Transformer can be
-applied to byte sequences "without a dramatically unfavorable increase in
-computational cost," but empirical results still show slower inference —
-about 1.5–2.6× slower on average and up to 9× on very long inputs【2】.
+Bot: BPE‑Dropout turns the normally deterministic Byte‑Pair Encoding (BPE) tokenizer into a stochastic one by randomly dropping merge operations during encoding, so the same word can be tokenized in several different ways (e.g., “example” → [8] or [6,7] or [0,1,2,3,4,5,0]) [1].  
+WordPiece, the tokenizer used in BERT, is also deterministic, but stochasticity can be introduced with a regularization scheme called MaxMatch‑Dropout, which randomly drops vocabulary entries during the maximum‑matching tokenization step to produce alternative segmentations [2][3].  
+Thus, both approaches aim to break the fixed tokenization of subword models, but BPE‑Dropout does so by perturbing the BPE merge process itself, whereas WordPiece requires an additional dropout‑based modification (MaxMatch‑Dropout) to achieve a similar stochastic effect.
 
-*CANINE* (Zhang et al., 2023) acknowledges the same length‑induced cost and
-frames the trade‑off as "computational: sequence lengths grow 3–5×,
-increasing attention cost quadratically," accepting the higher compute in
-exchange for equitable multilingual coverage【5】.
+Sources:
+  [1] StochasTok: Improving Fine-Grained Subword Understanding in LLMs (2025), section: Stochastic Tokenization.
+  [2] MaxMatch-Dropout: Subword Regularization for WordPiece (2022), section: Conclusion
+  [3] MaxMatch-Dropout: Subword Regularization for WordPiece (2022), section: Conclusion
+```
 
-**Citations:**
-- [2] Byte-Level Grammatical Error Correction Using Synthetic and Curated Corpora (2023), section: Sequence Segmentation For Gec
-- [5] The Tokenizer Tax Across 25 European Languages: Domain Invariance, Cross-Lingual Few-Shot Effects, and the Ukrainian Penalty (2026), section: Tokenizer-free architectures.
-
-**Abstained:** false | **top retrieval score:** 0.0301
-
-*Honest note*: **"Jiang et al., 2022" and "Zhang et al., 2023" are wrong —
-the correctly-grounded facts came with fabricated author names.** The
-actual retrieved source text (both [2] and [5]) literally says "ByT5 (Xue
-et al., 2022)" and "CANINE (Clark et al., 2022)." See
-[FAILURES.md](FAILURES.md) Case 3 for the full diagnosis — this is kept
-unedited because it's a genuine, instructive failure, not a cherry-picked
-good run.
+*Note*: the rewrite resolved "that" to BPE-Dropout, and retrieval found
+the WordPiece counterpart paper (MaxMatch-Dropout). `[8]`, `[6,7]` and
+`[0,...]` in the answer are token IDs quoted from the source, not
+citations; the parser drops `[8]` as out of range. [2] and [3] are two
+different chunks of the same paper (the cap allows 2 per paper).
 
 ---
 
-## Turn 4 — unanswerable question (abstention)
+## Turn 4 — multi-paper question
 
-**Q:** What dropout rate is recommended when fine-tuning a vision
-transformer on 3D medical images using BPE-style patch tokenization?
+**You:** What do the Tokenizer Tax paper on 25 European languages and Petrov et al. report about tokenization cost differences between languages?
 
-**A:** The corpus doesn't contain enough information to answer this.
+```
+  [rewritten query: What do the studies “Tokenizer Tax: A Large-Scale Study of Tokenization Costs Across 25 European Languages” and “Petrov et al.’s analysis of tokenization cost differences between languages” report regarding how tokenization costs vary among different European languages?]
 
-**Abstained:** true (`model_self_assessment`) | **top retrieval score:** 0.0252
+Bot: The “Tokenizer Tax” study measured token‑level “fertility” on parallel text for 25 European languages and found that tokenization can make API usage 2–15 times more expensive for some languages than for English, with certain morphologically rich languages (e.g., Ukrainian) incurring more than twice the cost per word [2][3].  Petrov et al. formalized this “language tax,” showing that non‑Latin‑script or highly inflected languages may require 2–15 × more tokens per semantic unit than English, leading to an order‑of‑magnitude disparity in commercial API costs across languages [3][4].
 
-*Honest note*: this question is out-of-domain (vision transformers / 3D
-medical imaging aren't in this corpus's scope), so abstention here is the
-correct, intended behavior — a true negative, not a false positive.
+Sources:
+  [2] The Tokenizer Tax Across 25 European Languages: Domain Invariance, Cross-Lingual Few-Shot Effects, and the Ukrainian Penalty (2026), section: Introduction
+  [3] The Tokenizer Tax Across 25 European Languages: Domain Invariance, Cross-Lingual Few-Shot Effects, and the Ukrainian Penalty (2026), section: Tokenizer Fertility and Multilingual Fairness
+  [4] Tokenizer Fertility and Zero-Shot Performance of Foundation Models on Ukrainian Legal Text: A Comparative Study (2026), section: Tokenizer Fertility and Multilingual Fairness
+```
+
+*Note*: Petrov et al.'s own paper is not among the sources. Its findings
+are reported through two later papers that cite it ([3], [4]). This is a
+secondary attribution, the kind of restated-finding problem the brief
+raises about surveys.
 
 ---
 
-## Turn 5 — specific lookup (partial grounded answer)
+## Turn 5 — unanswerable question
 
-**Q:** What dataset does mT5 use, and how many languages does its
-SentencePiece vocabulary cover?
+**You:** How many tokens are in the vocabulary of Google's Gemini 2.5 tokenizer?
 
-**A:** The mT5 model was pretrained on the multilingual mC4 corpus [2]. The
-sources do not specify how many languages are represented in the
-SentencePiece vocabulary used for mT5.
+```
+  [rewritten query: How many tokens are included in the vocabulary of the tokenizer used by Google’s Gemini 2.5 language model?]
 
-**Citations:**
-- [2] ByT5: Towards a token-free future with pre-trained byte-to-byte models (2021), section: ByT5 Design
+Bot: The corpus doesn't contain enough information to answer this.
+```
 
-**Abstained:** false | **top retrieval score:** 0.0301
-
-*Honest note*: this is exactly the Checkpoint-6 partial-answer behavior
-(see DECISIONS.md's "q10 partial-abstention" fix) working as intended —
-the model answered the part the sources supported (the mC4 dataset) and
-explicitly flagged the part they didn't (language count), instead of
-abstaining on the whole question.
+*Note*: correct abstention. Gemini's tokenizer is not described in the
+corpus.
