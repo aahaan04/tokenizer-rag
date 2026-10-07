@@ -1194,3 +1194,121 @@ iteration is likely to move further without overfitting to this exact
 36-question set. The remaining q03 non-determinism and the 8 retrieval-miss
 questions are carried into the failure analysis rather than chased with a
 second round.
+
+## 2026-10-07 — Attributing the precision jump: scorer redefinition vs. prompt/rewriter
+
+The raw precision change (0.41 -> 0.54) mixes two different things: (a) the
+abstention-detection FORMULA changed (a hedge only counts as abstention if
+there are also zero citations), and (b) the actual generations changed
+(new prompt rule, new rewriter). Recomputed an apples-to-apples "before"
+number: took the 10 original false-positive generations verbatim (same
+raw answer text, same retrieval) and rescored them with ONLY the new
+scorer formula, leaving the old prompt/rewriter/generations untouched.
+
+Result: rescoring alone fixes exactly 1 case (q10 — the citations-present
+partial answer) and nothing else, since every other one of the 10 original
+false positives was a plain boilerplate refusal with zero citation
+markers in the text, which the new formula still correctly treats as a
+full abstention. That gives:
+
+| Step | fp | precision |
+|---|---|---|
+| Original (old scorer, old prompt/rewriter) | 10 | 0.41 |
+| New scorer only, same old generations | 9 | 0.44 |
+| + new prompt + new rewriter (reported Round 1 result) | 6 | 0.54 |
+
+So **~1/4 of the precision gain (0.41→0.44) is the scorer redefinition
+alone**, and **~3/4 (0.44→0.54) comes from the actual generation changes**
+— 3 more cases flip (q26, q29, q31). q26 is the retrieval-score-gate path,
+which never calls the LLM, so that fix is attributable purely to the new
+rewriter changing retrieval (not the prompt). q29 and q31 go through the
+LLM, so their fix is some combination of the new rewriter changing what
+gets retrieved and the new prompt's partial-answer rule changing how the
+model responds to it — these two can't be cleanly separated without a
+further ablation, which wasn't run given the round budget.
+
+## 2026-10-07 — Follow-up recall: counts, sample size, and the gold-rewrite bias
+
+Restating the follow-up Recall@5 comparison with raw counts rather than
+only the mean: **system rewrite 3/7, gold rewrite 2/7** (q28, q29, q30 hit
+under the system rewrite; q25, q28 hit under the gold rewrite; q28 is the
+only question both get right).
+
+**n=7 is too small to support "the system rewrite beats the gold
+rewrite."** A single question flipping changes the ranking entirely, and
+with only 7 trials neither 3/7 nor 2/7 is distinguishable from chance at
+any reasonable confidence level. This is reported as a descriptive result
+for this eval set, not a generalizable claim about rewriting quality.
+
+**The gold-rewrite bias found while inspecting the actual
+`gold_standalone_rewrite` text for all 7**: every single one explicitly
+names the prior paper's title (and sometimes an exact figure from the gold
+answer) — e.g. q25's gold rewrite is "...compare to the vocabulary size
+used in BPE Gets Picky's EN-DE experiments (8192)...", q27's is "...compare
+to mBERT's shared multilingual subword vocabulary of 119,547 tokens", q30's
+names "the WMT14 dataset BPE-Dropout uses." These were authored by a human
+with full knowledge of the correct answer, so `gold_standalone_rewrite` is
+an ORACLE rewrite, not a neutral "what a good rewriter would produce"
+baseline — a real rewriter has no way to know the exact right paper title
+or figure before retrieval happens; that's the whole problem retrieval is
+solving. This means the gold condition in this comparison is a biased,
+optimistic ceiling (if anything, it should on average win), and the small
+observed system-rewrite edge (3/7 vs 2/7) most likely reflects
+individual-question retrieval noise at this sample size rather than the
+system's rewriting heuristic actually outperforming an oracle. Noted here
+so this comparison isn't mis-cited later as "the system rewrite is
+better" — see WRITEUP.md's limitations section.
+
+## 2026-10-07 — Phase 7 deliverable 7: fresh-clone reproducibility test, 2 real bugs found and fixed
+
+Could not do a literal `git clone` + test of the state about to be
+committed (the rule against running `git commit`/`push` myself means the
+pending Phase 7 work wasn't committed yet) — instead cloned the current
+HEAD locally and mirrored in every file already staged for a Phase 7
+commit, then ran the README's sample-mode quickstart end to end in a
+genuinely fresh venv. Found and fixed three real issues this way:
+
+1. **Windows long-path `pip install` failure**: the first clone attempt
+   landed in a deeply-nested session-temp path; `pip install -r
+   requirements.txt` failed with an `OSError` on a `torch\include\...`
+   file whose combined path exceeded Windows' 260-character default limit.
+   Re-cloning into a short path (`C:\tmp\...`) installed cleanly —
+   confirms this is a long-path issue, not a real dependency problem.
+   Documented as a README callout (short clone path, or enable Windows
+   Long Path support) rather than "fixed," since it's an OS/filesystem
+   constraint, not a bug in this project.
+2. **`index --out` name mismatch (real bug, found running the README's own
+   commands verbatim)**: the README told readers to run `index --model
+   BAAI/bge-small-en-v1.5` with no `--out`; `cmd_index`'s auto-derived
+   name (`model.split("/")[-1].replace("-","_")`) produces
+   `bge_small_en_v1.5`, but `eval`/`chat`'s default `--index` is
+   `bge_small` (the name the original full corpus build happened to use
+   because that run passed `--out bge_small` explicitly, which the README
+   simply forgot to say). Following the README exactly crashes `eval`/
+   `chat` with `FileNotFoundError`. Fixed by adding `--out bge_small` to
+   both README commands (sample and full-run sections) — the actual
+   pipeline code was never broken, the README's instructions were.
+3. **Windows console UTF-8 crash in `chat` (real bug, in `tokrag/__main__.py`,
+   not just my own debug scripts)**: GPT-OSS answers routinely contain
+   non-ASCII punctuation (en-dashes, non-breaking hyphens), and
+   `cmd_chat`'s plain `print()` crashes with `UnicodeEncodeError` on a
+   Windows terminal using the default cp1252 codepage — reproduced on the
+   very first real chat question in the fresh clone. Fixed by
+   reconfiguring `sys.stdout`/`sys.stderr` to UTF-8 (`errors="replace"` as
+   a last-resort fallback) at CLI startup when the detected encoding isn't
+   already UTF-8 already — this is a genuine user-facing bug independent
+   of sample mode specifically; anyone running `python -m tokrag chat` on
+   a default Windows terminal would have hit it on essentially any real
+   question.
+
+Also fixed a `FutureWarning` surfaced by the clean install resolving a
+newer `sentence-transformers` (6.1.0) than previously tested against —
+`requirements.txt` leaves it unpinned (`>=3.0`), and 6.1.0 renamed
+`get_sentence_embedding_dimension`. `tokrag/index/dense.py` now tries the
+new name first, falling back to the old one.
+
+After all three fixes: full sample-mode quickstart (`collect --sample 30`
+-> `parse` -> `index` x2 -> `eval` -> `chat`) runs end to end without error
+in a brand-new venv, and the full 103-test suite passes there too.
+Real, measured sample-mode timings (not estimates) are now in README.md's
+timing table, replacing the earlier warm-cache extrapolation for `parse`.
