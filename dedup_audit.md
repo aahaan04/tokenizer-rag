@@ -1,10 +1,50 @@
 # Dedup false-merge audit
 
-Groups audited: 104
-Pairs audited: 146
-Low-confidence merges (abstract cosine < 0.7 OR zero author overlap): 18
+## Group breakdown (single source of truth, see DECISIONS.md)
+
+- Total groups: 109 (238 rows)
+  - Version-pair only (same source, multiple arXiv versions): 7
+  - Cross-source only (preprint vs. published, no version pair): 80
+  - Both version pair AND cross-source: 18
+  - Degenerate (1 included member; other member excluded by relevance filtering): 1
+  - Other (e.g. duplicate same-source ACL bib records): 3
+
+Groups audited (pairwise): 108
+Pairs audited: 152
+Low-confidence merges (abstract cosine < 0.7 OR zero author overlap): 19
 Surveys flagged: 4
-Near-miss pairs (NOT merged, similar title + shared author): 115
+Near-miss pairs (NOT merged, similar title + shared author): 114
+Fuzzy-tier merges applied (title_sim>=0.85 + author/abstract support, or manual exception): 6
+
+## Fuzzy-tier merges applied (cumulative; 0 new on the most recent rerun since
+## these were already persisted to manifest.csv from the run that found them
+## — listed here directly rather than re-detected, since find_fuzzy_merges
+## only scans ungrouped singletons)
+
+- **grp0167** — fuzzy: title_sim=0.974 shared_authors=1 year_diff=1 abstract_sim=0.964
+  - A: SemToken: Semantic-Aware Tokenization for Efficient Long-Context Language Modeling (semantic_scholar:5324543701de3988b0855ada9e59c8ac0939edbd)
+  - B: SemToken: Semantic-Aware Tokenization for Efficient Long-Context Language Models (acl_anthology:liu-yu-2026-semtoken)
+- **grp0168** — fuzzy: title_sim=0.912 shared_authors=1 year_diff=0 abstract_sim=1.0
+  - A: MANTa: Efficient Gradient-Based Tokenization for End-to-End Robust Language Modeling (acl_anthology:godey-etal-2022-manta)
+  - B: MANTa: Efficient Gradient-Based Tokenization for Robust End-to-End Language Modeling (semantic_scholar:bc518f89f1ea8244ca019fd03c8c70f9d3c7fe9d)
+- **grp0169** — fuzzy: title_sim=0.917 shared_authors=4 year_diff=0 abstract_sim=None (strong-author path; one record's abstract is empty, a known S2 duplicate-crawl artifact — confirmed same paper by inspection)
+  - A: Tokens with Meaning: A Hybrid Tokenization Approach for Turkish (semantic_scholar:b683c670b535225eb10ac4592552fb5b75d3dabe)
+  - B: Tokens with Meaning: A Hybrid Tokenization Approach for NLP (semantic_scholar:91e76283ab8f311e37daf0b0194741f7d2baef4f)
+- **grp0170** — fuzzy: title_sim=1.0 shared_authors=8 year_diff=0 abstract_sim=None (case-only title difference; NOTE: "genomic language models" — this paper's domain should likely have been hard-vetoed in Phase 1 but "genomic" isn't a substring of the veto term "genome"; flagged as a topic-boundary gap, not fixed given remaining time)
+  - A: The impact of tokenizer selection in genomic language models (semantic_scholar:2dd89664211440997a5c5531cd5689288254bae2)
+  - B: The Impact of Tokenizer Selection in Genomic Language Models (semantic_scholar:7b298b2bebfe212f395094281c77927f2c92c988)
+- **grp0012** — manual (user-confirmed at Checkpoint 4): title_sim=0.667 (char-level) / 0.333 (word-Jaccard) — well under the 0.85 general threshold, applied as a named exception, not a threshold change. Extended an existing Phase 1 exact-title-match group (3 members total).
+  - A: MorphBPE: Morphology-Aware Tokenization for Efficient LLM Training (semantic_scholar:b6b6ba84783b6133d03365ceb8d4a22a706dab49 AND acl_anthology:asgari-etal-2026-morphbpe)
+  - B: MorphBPE: A Morpho-Aware Tokenizer Bridging Linguistic Complexity for Efficient LLM Training Across Morphologies (semantic_scholar:0a17cab809062aeabf4f6e3710aec88945c98e04)
+
+## REVERTED: one false merge caught and fixed before being kept
+
+- title_sim=0.855 shared_authors=3 (these "shared authors" were workshop-editor names, not paper authors — ACL `@proceedings` entries have no real author field) year_diff=1
+  - A: Proceedings of the First Workshop on Subword and Character Level Models in NLP (acl_anthology:ws-2017-subword), 2017
+  - B: Proceedings of the Second Workshop on Subword/Character LEvel Models (acl_anthology:ws-2018-subword), 2018
+  - Two DIFFERENT years' proceedings volumes, not the same paper. Reverted; added a guard (skip any pair where either title starts with "Proceedings of") so this class of false positive can't recur — see DECISIONS.md.
+
+(none)
 
 ## Low-confidence merges (manual review)
 
@@ -62,6 +102,9 @@ Near-miss pairs (NOT merged, similar title + shared author): 115
 - **grp0155**: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.538
   - A: Neural Machine Translation of Rare Words with Subword Units (arxiv:1508.07909v1)
   - B: Neural Machine Translation of Rare Words with Subword Units (acl_anthology:sennrich-etal-2016-neural)
+- **grp0169**: title_sim=0.917 author_overlap=0.4 abstract_cosine=0.554
+  - A: Tokens with Meaning: A Hybrid Tokenization Approach for Turkish (semantic_scholar:b683c670b535225eb10ac4592552fb5b75d3dabe)
+  - B: Tokens with Meaning: A Hybrid Tokenization Approach for NLP (semantic_scholar:91e76283ab8f311e37daf0b0194741f7d2baef4f)
 
 ## All merge-cluster pairwise scores
 
@@ -75,6 +118,8 @@ Near-miss pairs (NOT merged, similar title + shared author): 115
 - grp0008: title_sim=1.0 author_overlap=0.0 abstract_cosine=1.0 | Evaluating Morphological Plausibility of Subword Tokenization via Stat
 - grp0009: title_sim=1.0 author_overlap=0.273 abstract_cosine=0.998 | Understanding Secret Leakage Risks in Code LLMs: A Tokenization Perspe
 - grp0012: title_sim=1.0 author_overlap=0.6 abstract_cosine=0.998 | MorphBPE: Morphology-Aware Tokenization for Efficient LLM Training
+- grp0012: title_sim=0.667 author_overlap=0.4 abstract_cosine=0.977 | MorphBPE: Morphology-Aware Tokenization for Efficient LLM Training
+- grp0012: title_sim=0.667 author_overlap=0.167 abstract_cosine=0.978 | MorphBPE: Morphology-Aware Tokenization for Efficient LLM Training
 - grp0013: title_sim=1.0 author_overlap=0.333 abstract_cosine=1.0 | AdaptBPE: From General Purpose to Specialized Tokenizers
 - grp0014: title_sim=1.0 author_overlap=0.667 abstract_cosine=1.0 | Stop Taking Tokenizers for Granted: They Are Core Design Decisions in 
 - grp0015: title_sim=1.0 author_overlap=0.4 abstract_cosine=0.996 | The Token Tax: Systematic Bias in Multilingual Tokenization
@@ -211,6 +256,10 @@ Near-miss pairs (NOT merged, similar title + shared author): 115
 - grp0164: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.996 | MorphTok: Morphologically Grounded Tokenization for Indian Languages
 - grp0165: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.989 | The Functionalizer: Lossless Functional Decomposition for Subword Toke
 - grp0166: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.925 | Bolmo: Byteifying the Next Generation of Language Models
+- grp0167: title_sim=0.974 author_overlap=0.333 abstract_cosine=0.964 | SemToken: Semantic-Aware Tokenization for Efficient Long-Context Langu
+- grp0168: title_sim=0.912 author_overlap=0.143 abstract_cosine=1.0 | MANTa: Efficient Gradient-Based Tokenization for End-to-End Robust Lan
+- grp0169: title_sim=0.917 author_overlap=0.4 abstract_cosine=0.554 | Tokens with Meaning: A Hybrid Tokenization Approach for Turkish
+- grp0170: title_sim=1.0 author_overlap=1.0 abstract_cosine=0.993 | The impact of tokenizer selection in genomic language models
 
 ## Near-miss pairs (NOT merged), for manual spot-check
 
@@ -226,9 +275,6 @@ Near-miss pairs (NOT merged, similar title + shared author): 115
 - title_sim=0.681 author_overlap=1.0
   - A: Longest Tokenization (acl_anthology:guo-1997-longest)
   - B: One Tokenization per Source (acl_anthology:guo-1998-one)
-- title_sim=0.667 author_overlap=0.4
-  - A: MorphBPE: Morphology-Aware Tokenization for Efficient LLM Training (semantic_scholar:b6b6ba84783b6133d03365ceb8d4a22a706dab49)
-  - B: MorphBPE: A Morpho-Aware Tokenizer Bridging Linguistic Complexity for Efficient LLM Training Across Morphologies (semantic_scholar:0a17cab809062aeabf4f6e3710aec88945c98e04)
 - title_sim=0.65 author_overlap=1.0
   - A: byteSizedLLM@DravidianLangTech 2024: Fake News Detection in Dravidian Languages - Unleashing the Power of Custom Subword Tokenization with Subword2Vec and BiLSTM (acl_anthology:kodali-manukonda-2024-bytesizedllm)
   - B: byteLLM@LT-EDI-2024: Homophobia/Transphobia Detection in Social Media Comments - Custom Subword Tokenization with Subword2Vec and BiLSTM (acl_anthology:manukonda-kodali-2024-bytellm)

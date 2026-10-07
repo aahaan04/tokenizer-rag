@@ -50,3 +50,14 @@ Included rows: 847
   - classic-pipeline: 251
   - domain-soft: 75
   - domain-hard: 36
+
+## Candidate group breakdown (Phase 4, single source of truth)
+
+Total groups: 109 (238 rows across those groups)
+- Version-pair only (same source, multiple arXiv versions): 7
+- Cross-source only (preprint vs. published, no version pair): 80
+- Both version pair AND cross-source: 18
+- Degenerate (1 included member; other member excluded by relevance filtering): 1
+- Other (e.g. duplicate same-source ACL bib records): 3
+
+See dedup_audit.md for the full false-merge audit and fuzzy-tier merge list.

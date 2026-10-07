@@ -1,0 +1,188 @@
+{
+  "bge_small__none": {
+    "diversify_mode": "none",
+    "k": 5,
+    "gold_rewrite": false,
+    "overall": {
+      "n": 29,
+      "recall_at_k": 0.2931,
+      "mrr": 0.2397,
+      "duplicate_rate_at_k": 0.3241
+    },
+    "by_type": {
+      "follow_up": {
+        "n": 7,
+        "recall_at_k": 0.2857,
+        "mrr": 0.1786,
+        "duplicate_rate_at_k": 0.3429
+      },
+      "multi_paper": {
+        "n": 8,
+        "recall_at_k": 0.0625,
+        "mrr": 0.125,
+        "duplicate_rate_at_k": 0.25
+      },
+      "specific_lookup": {
+        "n": 14,
+        "recall_at_k": 0.4286,
+        "mrr": 0.3357,
+        "duplicate_rate_at_k": 0.3571
+      }
+    }
+  },
+  "bge_small__cap1_naive": {
+    "diversify_mode": "cap1_naive",
+    "k": 5,
+    "gold_rewrite": false,
+    "overall": {
+      "n": 29,
+      "recall_at_k": 0.2241,
+      "mrr": 0.2241,
+      "duplicate_rate_at_k": 0.0
+    },
+    "by_type": {
+      "follow_up": {
+        "n": 7,
+        "recall_at_k": 0.1429,
+        "mrr": 0.1429,
+        "duplicate_rate_at_k": 0.0
+      },
+      "multi_paper": {
+        "n": 8,
+        "recall_at_k": 0.0625,
+        "mrr": 0.125,
+        "duplicate_rate_at_k": 0.0
+      },
+      "specific_lookup": {
+        "n": 14,
+        "recall_at_k": 0.3571,
+        "mrr": 0.3214,
+        "duplicate_rate_at_k": 0.0
+      }
+    }
+  },
+  "bge_small__new": {
+    "diversify_mode": "new",
+    "k": 5,
+    "gold_rewrite": false,
+    "overall": {
+      "n": 29,
+      "recall_at_k": 0.2759,
+      "mrr": 0.2397,
+      "duplicate_rate_at_k": 0.1862
+    },
+    "by_type": {
+      "follow_up": {
+        "n": 7,
+        "recall_at_k": 0.2857,
+        "mrr": 0.1786,
+        "duplicate_rate_at_k": 0.2
+      },
+      "multi_paper": {
+        "n": 8,
+        "recall_at_k": 0.125,
+        "mrr": 0.15,
+        "duplicate_rate_at_k": 0.175
+      },
+      "specific_lookup": {
+        "n": 14,
+        "recall_at_k": 0.3571,
+        "mrr": 0.3214,
+        "duplicate_rate_at_k": 0.1857
+      }
+    }
+  },
+  "bm25__none": {
+    "diversify_mode": "none",
+    "k": 5,
+    "gold_rewrite": false,
+    "overall": {
+      "n": 29,
+      "recall_at_k": 0.431,
+      "mrr": 0.3891,
+      "duplicate_rate_at_k": 0.3586
+    },
+    "by_type": {
+      "follow_up": {
+        "n": 7,
+        "recall_at_k": 0.2857,
+        "mrr": 0.1071,
+        "duplicate_rate_at_k": 0.1714
+      },
+      "multi_paper": {
+        "n": 8,
+        "recall_at_k": 0.1875,
+        "mrr": 0.2917,
+        "duplicate_rate_at_k": 0.325
+      },
+      "specific_lookup": {
+        "n": 14,
+        "recall_at_k": 0.6429,
+        "mrr": 0.5857,
+        "duplicate_rate_at_k": 0.4714
+      }
+    }
+  },
+  "bm25__cap1_naive": {
+    "diversify_mode": "cap1_naive",
+    "k": 5,
+    "gold_rewrite": false,
+    "overall": {
+      "n": 29,
+      "recall_at_k": 0.3793,
+      "mrr": 0.3707,
+      "duplicate_rate_at_k": 0.0
+    },
+    "by_type": {
+      "follow_up": {
+        "n": 7,
+        "recall_at_k": 0.2857,
+        "mrr": 0.1071,
+        "duplicate_rate_at_k": 0.0
+      },
+      "multi_paper": {
+        "n": 8,
+        "recall_at_k": 0.125,
+        "mrr": 0.25,
+        "duplicate_rate_at_k": 0.0
+      },
+      "specific_lookup": {
+        "n": 14,
+        "recall_at_k": 0.5714,
+        "mrr": 0.5714,
+        "duplicate_rate_at_k": 0.0
+      }
+    }
+  },
+  "bm25__new": {
+    "diversify_mode": "new",
+    "k": 5,
+    "gold_rewrite": false,
+    "overall": {
+      "n": 29,
+      "recall_at_k": 0.431,
+      "mrr": 0.3891,
+      "duplicate_rate_at_k": 0.2
+    },
+    "by_type": {
+      "follow_up": {
+        "n": 7,
+        "recall_at_k": 0.2857,
+        "mrr": 0.1071,
+        "duplicate_rate_at_k": 0.1143
+      },
+      "multi_paper": {
+        "n": 8,
+        "recall_at_k": 0.1875,
+        "mrr": 0.2917,
+        "duplicate_rate_at_k": 0.2
+      },
+      "specific_lookup": {
+        "n": 14,
+        "recall_at_k": 0.6429,
+        "mrr": 0.5857,
+        "duplicate_rate_at_k": 0.2429
+      }
+    }
+  }
+}
