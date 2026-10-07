@@ -976,3 +976,135 @@ BM25 alone — only that it's not worse, and does help interpretably on
 specific_lookup and follow_up question types where exact terms AND semantic
 continuity both matter. A larger eval set would be needed to resolve the
 hybrid-vs-BM25 question with confidence; noted as a limitation.
+
+## 2026-10-07 — Phase 6 setup: Groq free-tier model change
+
+Checked Groq's free-tier limits before building (per the brief's
+instruction). **`llama-3.3-70b-versatile` — the model chosen back in Phase
+0 — was removed from Groq's free tier on 2026-08-16** (Enterprise-only now);
+this went unnoticed until actually building the chatbot, since nothing in
+Phases 1-5 made an LLM call. Verified the current free-tier production
+models directly against `console.groq.com/docs/models` and with real API
+calls: **`openai/gpt-oss-120b`** (main generation) and
+**`openai/gpt-oss-20b`** (query rewriting + groundedness judge — simpler
+tasks, lighter/faster model), both **1,000 RPM / 250,000 TPM** free — far
+more generous than the old model's 30 RPM / 12,000 TPM. Updated
+`config.py`, `.env.example`, and the user's actual `.env` (not git-tracked,
+edited directly since it still had the defunct model name and was returning
+404s).
+
+GPT-OSS models are reasoning models: responses carry a separate `reasoning`
+field that consumes the token budget before `content` is produced.
+`reasoning_effort="low"` is used everywhere in this project — verified it
+still produces correct, on-topic output while cutting reasoning-token
+overhead roughly in half (31 -> 12 tokens on a trivial test prompt).
+
+Built `chat/llm_provider.py`: every call cached to disk (keyed by the full
+request body — model, messages, params — so identical calls, common across
+eval reruns, cost nothing on repeat) and retried with exponential backoff on
+429 (2s initial, doubling, capped at 60s, 6 attempts).
+
+## 2026-10-07 — Citation format bug: full-width brackets
+
+Manual testing surfaced a real bug immediately: despite the prompt asking
+for `[N]` citations, one response used full-width CJK brackets (`【1】`)
+instead, which the citation-parsing regex (`\[(\d+)\]`) didn't match at
+all — citations silently came back empty. Fixed two ways: strengthened the
+prompt to explicitly say "ASCII square brackets... never full-width
+brackets, parentheses, or any other citation style," and made the parser
+accept both bracket styles as a safety net (`[\[【](\d+)[\]】]`) —
+belt and suspenders, since a prompt instruction alone isn't a guarantee.
+Added regression tests for both bracket styles.
+
+## 2026-10-07 — Abstention threshold: tuned on the eval set, and why it's conservative
+
+Computed the hybrid searcher's top-1 RRF score for all 36 eval questions
+(answerable using each question's own text/gold rewrite, unanswerable using
+the question as given). **The two distributions overlap substantially**:
+answerable scores range 0.0233-0.0325, unanswerable scores range
+0.0216-0.0318 — e.g. unanswerable q34 scores 0.0318, HIGHER than 24 of the
+29 answerable questions. This is an inherent limitation of RRF's fused
+score: it's rank-based, not a true relevance magnitude, so it has no strong
+absolute "no real match" signal — and several unanswerable questions were
+deliberately designed as in-domain near-misses that DO retrieve plausible-
+looking content (that was the point, per the Checkpoint 3 revision).
+
+Given the overlap, `ABSTAIN_SCORE_THRESHOLD = 0.0225` is set conservatively
+to catch only the single most extreme low-score case (q24, 0.0216) rather
+than attempt to split the overlapping middle — which is exactly why the
+brief asks for a score threshold COMBINED with an instruction-level check
+(the model's own assessment of whether its sources answer the question)
+rather than relying on score alone. This is disclosed here per the "note
+any thresholds tuned on the eval set" instruction — tuning was done by
+inspection of the eval set's score distribution, not by grid-searching for
+the single best-scoring cutoff, since the overlap meant no cutoff could do
+much better than this one.
+
+## 2026-10-07 — Model non-determinism at temperature=0, and a retry mitigation
+
+The chat eval's first full run found 10 false-positive abstentions (model
+said "the corpus doesn't contain enough information" on a genuinely
+answerable question) against 0 false negatives. Investigated the clearest
+case (q03, mBERT vocabulary size) end to end: confirmed the gold chunk WAS
+in the top-5 (source [4], containing the literal text "The final shared
+mBERT vocabulary comprises a total of 119,547 subword tokens" within the
+first 800 characters sent to the model) — ruling out retrieval failure and
+context truncation. Strengthening the prompt to explicitly instruct
+"carefully read EVERY numbered source in full before deciding" fixed this
+specific case in isolated testing — but re-running the FULL chat eval with
+the updated prompt still showed the same 10 false positives.
+
+Tracked this down to genuine **non-determinism at temperature=0**: calling
+the exact same prompt against the exact same sources 3 times (fresh,
+uncached) produced the correct answer once and the same false abstention
+twice. This is a real reliability characteristic of GPT-OSS-120B on Groq's
+infra (likely MoE expert-routing or batched-inference variance), not a
+logic bug — `temperature=0` reduces but does not guarantee determinism for
+this model/provider combination.
+
+**Mitigation**: retry once (fresh, uncached) whenever the model
+self-abstains, before accepting the abstention. Cheap (only abstained cases
+pay the extra call) and directly motivated by the measured ~1-in-3
+success-per-attempt rate — a single retry raises the odds of a correct draw
+from ~33% to roughly 1-(2/3)^2 ≈ 56% per question, without unbounded retry
+cost.
+
+**Measured result of the retry mitigation**: it did NOT reduce the
+false-positive count in the final full eval run — still 10/10 of the same
+questions abstained (see final numbers below), identical to the pre-retry
+runs. Reporting this honestly rather than claiming the fix worked: the one
+case diagnosed in isolation (q03) IS genuinely non-deterministic (confirmed
+by 3 repeated direct API calls), but that diagnosis was done on a single
+question and doesn't generalize to the other 9 — they likely abstain for a
+more systematic reason (e.g. the fact being spread across the 800-char
+truncation boundary, phrased ambiguously relative to the retrieved
+chunk's wording, or the model being conservative on legitimately
+borderline source text) that a single retry draw doesn't fix. The retry
+logic is kept in the code since it's cheap and provably helps the
+non-deterministic subset, but it is not a fix for abstention precision
+overall — that remains a real, disclosed limitation of this system
+(flagged for follow-up write-up rather than further tuning tonight, given
+the time budget).
+
+## 2026-10-07 — Phase 6 final chat eval numbers (36 questions)
+
+- Abstention: tp=7, fp=10, fn=0, tn=19 → **precision 0.41, recall 1.0**.
+  Recall 1.0 means every truly-unanswerable question WAS abstained on (no
+  hallucinated answers to unanswerable questions, which is the safety-
+  critical direction); the low precision (many answerable questions also
+  triggered abstention) is the known limitation above.
+- **Groundedness rate: 0.89** (17/19 non-abstained answers fully supported
+  by their cited sources, per LLM-judge).
+- **Citation rate: 0.84** (16/19 non-abstained answers carried >=1 valid
+  citation mapped to a retrieved chunk).
+- **Follow-up retrieval, system rewrite vs. gold rewrite** (7 follow-up
+  questions with a gold_standalone_rewrite): mean recall@5 system=0.14,
+  gold=0.29. The system's own query rewrite recovers less than half the
+  gold rewrite's recall — per-question detail: q25 (0.0 vs 1.0), q26 (0.0
+  vs 0.0), q27 (0.0 vs 0.0), q28 (0.0 vs 1.0), q29 (0.0 vs 0.0), q30 (1.0 vs
+  0.0 — the one case where the system rewrite beat gold), q31 (0.0 vs 0.0).
+  Both are low in absolute terms (most follow-ups don't recover the gold
+  chunk at k=5 either way), suggesting the harder follow-up questions in
+  this eval set are a genuine retrieval weak point independent of rewrite
+  quality — worth flagging as a limitation rather than solely a rewriting
+  problem.

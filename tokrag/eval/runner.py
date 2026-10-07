@@ -60,11 +60,14 @@ class DenseSearcher:
         self.embeddings, self.meta = load_dense_index(index_name)
         self.model = SentenceTransformer(model_name)
 
-    def search(self, query: str, k: int) -> list:
+    def search_with_scores(self, query: str, k: int) -> list:
         from tokrag.index.dense import search as dense_search
 
         q_emb = self.model.encode([query], convert_to_numpy=True, normalize_embeddings=True)[0]
-        return [i for i, _score in dense_search(q_emb, self.embeddings, k=k)]
+        return dense_search(q_emb, self.embeddings, k=k)
+
+    def search(self, query: str, k: int) -> list:
+        return [i for i, _score in self.search_with_scores(query, k)]
 
 
 class HybridSearcher:
@@ -82,7 +85,7 @@ class HybridSearcher:
         self.rrf_k = rrf_k
         self.meta = dense_searcher.meta  # same chunk ordering/index for both
 
-    def search(self, query: str, k: int) -> list:
+    def search_with_scores(self, query: str, k: int) -> list:
         # Overfetch both rankings generously so RRF has enough to fuse before truncating to k.
         fetch_k = max(k * 4, 50)
         dense_idxs = self.dense.search(query, fetch_k)
@@ -95,7 +98,10 @@ class HybridSearcher:
             scores[idx] += 1.0 / (self.rrf_k + rank)
 
         ranked = sorted(scores.keys(), key=lambda i: -scores[i])
-        return ranked[:k]
+        return [(i, scores[i]) for i in ranked[:k]]
+
+    def search(self, query: str, k: int) -> list:
+        return [i for i, _score in self.search_with_scores(query, k)]
 
 
 class BM25Searcher:
@@ -104,10 +110,13 @@ class BM25Searcher:
 
         self.bm25, self.meta = load_bm25_index()
 
-    def search(self, query: str, k: int) -> list:
+    def search_with_scores(self, query: str, k: int) -> list:
         from tokrag.index.bm25 import search as bm25_search
 
-        return [i for i, _score in bm25_search(self.bm25, query, k=k)]
+        return bm25_search(self.bm25, query, k=k)
+
+    def search(self, query: str, k: int) -> list:
+        return [i for i, _score in self.search_with_scores(query, k)]
 
 
 def _diversify_mode_fn(mode: str, k: int, survey_group_ids: set, canonical_ids: dict):

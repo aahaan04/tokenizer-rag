@@ -1,0 +1,17 @@
+{
+  "n_questions_evaluated": 36,
+  "abstention": {
+    "tp": 7,
+    "fp": 10,
+    "fn": 0,
+    "tn": 19,
+    "precision": 0.4117647058823529,
+    "recall": 1.0
+  },
+  "groundedness_rate": 0.8947368421052632,
+  "n_groundedness_judged": 19,
+  "citation_rate": 0.8421052631578947,
+  "n_citation_checked": 19,
+  "followup_mean_recall_system": 0.14285714285714285,
+  "followup_mean_recall_gold": 0.2857142857142857
+}

@@ -55,7 +55,33 @@ def cmd_eval(args: argparse.Namespace) -> None:
 
 
 def cmd_chat(args: argparse.Namespace) -> None:
-    raise NotImplementedError("chat: lands in Phase 6")
+    from tokrag.chat.chatbot import Chatbot
+    from tokrag.eval.runner import BM25Searcher, DenseSearcher, HybridSearcher
+
+    print("Loading retrieval index (hybrid: BM25 + bge-small)...")
+    bge = DenseSearcher("bge_small", "BAAI/bge-small-en-v1.5")
+    bm25 = BM25Searcher()
+    searcher = HybridSearcher(bge, bm25)
+    bot = Chatbot(searcher)
+
+    print("Ready. Ask a question about tokenizer research for LLMs (Ctrl+C or 'exit' to quit).\n")
+    while True:
+        try:
+            question = input("You: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+        if not question or question.lower() in ("exit", "quit"):
+            break
+        turn = bot.ask(question)
+        if turn.rewritten_question != turn.question:
+            print(f"  [rewritten query: {turn.rewritten_question}]")
+        print(f"\nBot: {turn.answer}\n")
+        if turn.citations:
+            print("Sources:")
+            for c in turn.citations:
+                print(f"  [{c.index}] {c.paper_title} ({c.year}), section: {c.section}")
+        print()
 
 
 def build_parser() -> argparse.ArgumentParser:
