@@ -24,10 +24,22 @@ ACL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Entries are separated by a line that's just "}" followed by the next "@type{".
 _ENTRY_RE = re.compile(r"@(\w+)\{([^,\n]+),\n(.*?)\n\}\n", re.DOTALL)
-# Quoted field values, possibly multiline; stop at the next ",\n    field =", a
-# trailing "\n}", or end of string (the entry regex strips the body's trailing
-# "\n}\n", so the last field — often "abstract" — ends at EOF, not "\n}").
-_FIELD_RE = re.compile(r'(\w+)\s*=\s*"(.*?)"(?=,\s*\n\s*\w+\s*=|\s*\n\}|\s*$)', re.DOTALL)
+# Field values are either "quoted" or {brace-delimited} — BibTeX allows both,
+# and exporters commonly switch to braces for a field containing diacritics
+# needing their own nested brace protection (e.g. author = {...{\"u}...}).
+# A regex-only parser only matching quotes silently drops any brace-delimited
+# field, which is NOT rare for international author names — found via the
+# Phase 4 dedup audit when a paper's "author" field (braced, due to '{\"U}'
+# in "Üstün") was missing and the code fell back to the wrong field
+# (conference "editor" names) entirely. One level of nested braces is
+# handled, which covers the diacritic-escaping case; stop at the next
+# ",\n    field =", a trailing "\n}", or end of string (the entry regex
+# strips the body's trailing "\n}\n", so the last field ends at EOF).
+_FIELD_RE = re.compile(
+    r'(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|\{((?:[^{}]|\{[^{}]*\})*)\})'
+    r"(?=,\s*\n\s*\w+\s*=|\s*\n\}|\s*$)",
+    re.DOTALL,
+)
 
 # Cheap substring pre-filter so we don't fully field-parse all ~130k entries —
 # only the small fraction whose title or abstract mentions tokenization at all.
@@ -63,7 +75,7 @@ def _download_if_needed() -> None:
 
 
 def _parse_entry(key: str, body: str):
-    fields = dict(_FIELD_RE.findall(body))
+    fields = {m.group(1): (m.group(2) if m.group(2) is not None else m.group(3)) for m in _FIELD_RE.finditer(body)}
     title = _clean_ws(_strip_braces(fields.get("title", "")))
     if not title:
         return None
