@@ -2,7 +2,7 @@
 
 Three real, distinct failure types found while building and evaluating the
 chatbot (Phase 6 eval, [phase6_chat_eval_results.json](phase6_chat_eval_results.json),
-and the Phase 7 transcript, [transcript.md](transcript.md)). Each case below
+and the earlier Phase 7 transcript, [transcript_earlier.md](transcript_earlier.md)). Each case below
 is reproduced exactly as the bot produced it — nothing edited for effect.
 
 ---
@@ -47,10 +47,11 @@ this project's scope.
 
 **Question (q25, follow_up, turn 2 of a conversation):** "How does that
 compare to the vocabulary size where Beinborn & Pinter say WordPiece
-tokenization quality plateaus?" (turn 1 established: BPE Gets Picky used
-8192 for its EN-DE experiments)
+tokenization quality plateaus?" (the answer key for turn 1 is 8192, the
+paper's main EN-DE setting; in transcript_earlier.md, Turn 1 instead gave the
+16K–64K sizes from its "Larger vocabularies" section)
 
-**Actual output** (reproduced live in [transcript.md](transcript.md), Turn
+**Actual output** (reproduced live in [transcript_earlier.md](transcript_earlier.md), Turn
 2): "The corpus doesn't contain enough information to answer this."
 (abstained, `model_self_assessment`)
 
@@ -76,20 +77,20 @@ spend the capped prompt-tuning rounds chasing them.
 **Likely cause** (not fully root-caused, flagged for future work): the
 rewritten query packs in three numbers (16384/32768/65536) plus two paper
 names, which may dilute the embedding/BM25 signal relative to a shorter,
-more targeted query — consistent with the Phase 5 finding that follow-up
-questions are hybrid retrieval's weakest category overall (Recall@5 0.71
-hybrid vs 0.29/0.00 bge-small/SPECTER, still the best of a weak field).
+more targeted query — consistent with Phase 5, where hybrid's follow-up
+Recall@5 falls from 0.71 (raw question) to 0.29 when the query names
+prior-turn entities (gold rewrite).
 
 ---
 
 ## Case 3 — Correctly-cited facts with a fabricated author attribution
 
-**Question (q08/transcript Turn 3, multi_paper):** "What is the core
+**Question (q08/transcript_earlier.md Turn 3, multi_paper):** "What is the core
 trade-off of byte-level/character-level ('tokenizer-free') models like
 ByT5 and CANINE compared to subword tokenization, and how does each paper
 address the cost side of it?"
 
-**Actual output** (verbatim, [transcript.md](transcript.md) Turn 3):
+**Actual output** (verbatim, [transcript_earlier.md](transcript_earlier.md) Turn 3):
 > *ByT5* (Jiang et al., 2022) argues that the standard Transformer can be
 > applied to byte sequences "without a dramatically unfavorable increase in
 > computational cost," but empirical results still show slower inference
@@ -136,7 +137,6 @@ cheap second pass that checks something narrower than full groundedness**
 actually appears in that citation's source text, which is a simpler,
 more mechanical check than full claim-level groundedness and could run on
 every answer without much added latency. Case 2 (retrieval miss) points
-back to Phase 5: a reranker or a better-tuned hybrid weighting for
-follow-up queries specifically, since that's consistently the weakest
-question type across every retrieval configuration tested (see WRITEUP.md's
-embedding comparison table).
+back to Phase 5: a reranker, or rewrites that avoid over-anchoring on
+prior-turn entities (multi-paper, at 0.19 Recall@5, is the weakest question
+type overall; see phase5_eval_results.json).

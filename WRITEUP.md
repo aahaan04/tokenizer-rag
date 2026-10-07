@@ -20,7 +20,11 @@ use just as often).
 (keyword search) + ACL Anthology (bulk bibliography, pre-filtered then
 scored) — ACL added as a third source when Semantic Scholar's rate limits
 proved too unreliable to supply the preprint-vs-conference-version links
-dedup needs.
+dedup needs. All clients throttle requests and back off on 429s. Licences:
+the manifest's `license` column covers all 105 arXiv rows (arXiv's default
+licence) and 49 of 281 Semantic Scholar rows (open-access licence from the
+API); ACL rows are blank. PDFs are downloaded locally for parsing only and
+are never committed or redistributed.
 
 **Inclusion counts** (see [manifest_summary.md](manifest_summary.md)):
 
@@ -71,14 +75,20 @@ pathological LaTeX-markup leaks with no whitespace to split on).
 
 ## 3. Dedup strategy
 
-Three duplicate cases, handled separately:
+The brief's three cases, plus chunk-level near-duplicates:
 
 1. **Multiple arXiv versions** (v1 vs. v3) — 7 version-only groups,
    deliberately seeded with 25 real pairs (arXiv search only ever returns
    the latest version, so this never occurs naturally).
 2. **Preprint vs. published, cross-source** — the dominant case: 80
    cross-source-only groups + 18 both version-paired and cross-source.
-3. **Near-duplicate chunks** within a paper's own multiple copies (e.g.
+3. **Surveys restating other papers' findings** — flagged, never merged
+   (`dedup/survey.py` matches title/abstract patterns like "survey",
+   "systematic review" and "we survey"; 4 flagged). Merging would conflate
+   a survey's restatement with the primary source, so `diversify()` ranks
+   survey chunks below primary papers and uses them only to fill leftover
+   top-k slots — the brief's "Survey B, for broader context" outcome.
+4. **Near-duplicate chunks** within a paper's own multiple copies (e.g.
    arXiv HTML vs. ACL PDF extractions of the same section) — handled at
    retrieval time via word-trigram shingle Jaccard (>=0.9 collapses two
    chunks as the same passage).
@@ -129,10 +139,10 @@ on their gold standalone rewrite (§6):
 
 | Config | Recall@5 | MRR | latency p50 (ms) | index size |
 |---|---|---|---|---|
-| bge-small-en-v1.5 | 0.241 | 0.231 | 18.0 | 51.0 MB |
-| SPECTER (original) | 0.103 | 0.138 | 32.6 | 101.9 MB |
-| BM25 | 0.397 | 0.372 | 180.9 | 28.3 MB |
-| **Hybrid (BM25+bge-small, RRF)** | **0.466** | **0.428** | 297.9 | 79.3 MB |
+| bge-small-en-v1.5 | 0.241 | 0.231 | 18.0 | 50.9 MB |
+| SPECTER (original) | 0.103 | 0.138 | 32.6 | 101.8 MB |
+| BM25 | 0.397 | 0.372 | 180.9 | 28.2 MB |
+| **Hybrid (BM25+bge-small, RRF)** | **0.466** | **0.428** | 297.9 | 79.1 MB |
 
 **Paired bootstrap 95% CIs** (3,000 resamples, seed=42, n=29):
 
@@ -180,7 +190,7 @@ has the full diagnosis):
 | Metric | Value |
 |---|---|
 | Abstention precision (raw) | 0.54 (tp=7, fp=6, fn=0, tn=23) |
-| Abstention precision, excluding retrieval misses | **0.88** (1 real generation error of 8 excluded retrieval misses) |
+| Abstention precision, excluding retrieval misses | **0.88** (7/8: 1 real generation error; 5 retrieval misses excluded) |
 | Abstention recall | **1.0** — zero hallucinated answers on unanswerable questions |
 | Groundedness rate (LLM-judge) | 0.87 (20/23) |
 | Citation rate | 0.91 (21/23) |
