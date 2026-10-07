@@ -29,3 +29,6 @@ Thumbs.db
 
 # Claude Code session-local state (not project config)
 .claude/
+
+# Personal interview prep, not a deliverable
+STUDY_GUIDE.md
