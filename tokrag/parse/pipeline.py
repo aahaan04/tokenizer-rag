@@ -77,6 +77,7 @@ def run(limit: int | None = None) -> dict:
             report["no_text_not_indexed"] += 1
 
         row.parse_status = parse_status
+        row.indexed = "no" if parse_status == "no_text_not_indexed" else "yes"
         if not sections:
             continue
 

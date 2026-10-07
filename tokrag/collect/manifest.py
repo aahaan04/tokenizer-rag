@@ -44,6 +44,11 @@ class Candidate:
     # "no_text_not_indexed" (no full text AND no abstract -> zero chunks,
     # excluded from the index). Blank until parse runs.
     parse_status: str = ""
+    # "yes"/"no", derived 1:1 from parse_status ("full_text"/"abstract_only" ->
+    # yes, "no_text_not_indexed" -> no); blank until parse runs. A separate
+    # column (rather than making callers re-derive it from parse_status) since
+    # the brief asks for an explicit indexed yes/no column on the manifest.
+    indexed: str = ""
 
 
 MANIFEST_FIELDS = [f.name for f in dataclasses.fields(Candidate)]
