@@ -31,6 +31,9 @@ Copy-Item .env.example .env
 # then edit .env and add your GROQ_API_KEY (free at https://console.groq.com/keys)
 ```
 
+If activation is blocked by execution policy: `Set-ExecutionPolicy -Scope Process Bypass`.
+macOS/Linux: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && cp .env.example .env`.
+
 Everything downstream of `collect` needs that key (query rewriting,
 chat generation, the groundedness judge). `collect`, `parse`, and `index`
 don't need it.
@@ -42,11 +45,11 @@ timing table below) — not practical for a quick check. `--sample N` runs
 the *entire* pipeline (collect → parse → index → eval → chat) end to end
 on a small slice of real papers in a few minutes, exercising the same code
 path as the full run, just scoped small. This is also what the fresh-clone
-reproducibility check (see WRITEUP.md) actually runs.
+reproducibility check (see DECISIONS.md) actually runs.
 
 ```powershell
 python -m tokrag collect --sample 30   # caps collection to ~30 included papers (~2-4 min, mostly network-bound)
-python -m tokrag parse                  # parses + chunks whatever collect found (~1 min for 30 papers)
+python -m tokrag parse                  # parses + chunks whatever collect found (~2-3 min for 30 papers, network-bound)
 python -m tokrag index --model bm25
 python -m tokrag index --model BAAI/bge-small-en-v1.5 --out bge_small
 python -m tokrag eval --retrieval hybrid --diversify
@@ -64,17 +67,26 @@ or chat quality (use the full run, or the numbers already reported in
 
 ## Full run
 
+**To reproduce the reported numbers, skip `collect` and the version-pair
+line and start from the committed `manifest.csv`.** `collect` queries live
+APIs whose results change over time, and it renumbers the candidate groups
+that the eval answer key in `eval/questions.jsonl` refers to. PDFs/HTML
+are never committed (`data/raw/` is gitignored); `parse` downloads them
+again via `tokrag/parse/fetch.py`.
+
 ```powershell
 python -m tokrag collect          # full collection pass (~20 query terms x2 sources + ACL bulk + canaries)
-python -m tokrag parse            # parse + chunk every included row
+python -c "from tokrag.collect.pipeline import add_arxiv_version_pairs; add_arxiv_version_pairs()"   # seed 25 real arXiv v1 rows
+python -m tokrag dedup            # manifest-only; run before parse so chunks inherit merged group ids
+python -m tokrag parse            # downloads each paper's HTML/PDF into gitignored data/raw/, then parses + chunks
 python -m tokrag index --model bm25
 python -m tokrag index --model BAAI/bge-small-en-v1.5 --out bge_small
-python -m tokrag dedup            # canonical ids, survey flagging, diversification inputs
+python -m tokrag index --model allenai-specter --out specter   # optional ablation, ~127 min
 python -m tokrag eval --retrieval hybrid --diversify
 python -m tokrag chat
 ```
 
-### Full-run timing (measured on this project's corpus: 847 included rows, 34,779 chunks, CPU-only)
+### Full-run timing (measured on this project's corpus: 847 included rows, 34,779 chunks, CPU-only — before the 4-row genomic-veto removal; now 843 rows / 34,733 chunks)
 
 | Stage | Time | Notes |
 |---|---|---|
@@ -124,7 +136,7 @@ rewrite changes the query) before retrieval runs.
 | Design write-up (corpus, dedup, retrieval comparison, chat metrics, limitations, next steps) | [WRITEUP.md](WRITEUP.md) |
 | Dated assumptions/decisions log | [DECISIONS.md](DECISIONS.md) |
 | Dedup false-merge audit | [dedup_audit.md](dedup_audit.md) |
-| Real chat transcript (5+ turns, unedited) | [transcript.md](transcript.md) |
+| Real chat transcript (5+ turns, unedited) | [transcript.md](transcript.md); earlier session with a retrieval-miss follow-up: [transcript_earlier.md](transcript_earlier.md) |
 | Failure analysis (3+ distinct cases) | [FAILURES.md](FAILURES.md) |
 | Chat eval results (abstention, groundedness, citation, follow-up recall) | [phase6_chat_eval_results.json](phase6_chat_eval_results.json) |
 | Eval question set | [eval/questions.jsonl](eval/questions.jsonl) |
